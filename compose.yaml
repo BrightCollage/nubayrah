@@ -1,0 +1,17 @@
+services:
+  nubayrah:
+    build: ./server/
+    ports:
+      - 5050:5050
+    depends_on:
+      - db
+  db:
+    image: postgres:14-alpine
+    container_name: postgresql-server
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_PASSWORD=nubayrah
+      - POSTGRES_USER=nubayrah
+    volumes:
+      - ./.data:/var/lib/postgresql/data
