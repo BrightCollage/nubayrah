@@ -18,13 +18,12 @@ func TestGetRootDoc(t *testing.T) {
 	t.Log("Opening MobyDick.epub")
 	fp := "test_data/MobyDick.epub"
 
-	epub, err := NewEpubFromFile(fp)
+	epub, err := OpenEpub(fp)
 	assert.Nil(t, err)
 
-	doc, err := epub.GetRootFile()
 	assert.Nil(t, err)
 
-	b, err := doc.WriteToString()
+	b, err := epub.rootFile.WriteToString()
 	assert.Nil(t, err)
 
 	assert.Equal(t, len(orig), len(b), "File content length mismatch. Want: %d Have: %d", len(orig), len(b))
@@ -38,7 +37,7 @@ func TestReadMetadata(t *testing.T) {
 
 	// Test MobyDick
 	fp := "test_data/MobyDick.epub"
-	epub, err := NewEpubFromFile(fp)
+	epub, err := OpenEpub(fp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +78,7 @@ func TestReadMetadata(t *testing.T) {
 
 	// Test The Stone Age
 	fp = "test_data/TheStoneAgeInNorthAmericaVol2.epub"
-	epub, err = NewEpubFromFile(fp)
+	epub, err = OpenEpub(fp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +103,7 @@ func TestReadMetadata(t *testing.T) {
 
 	// Test The Brothers Karamazov
 	fp = "test_data/TheBrothersKaramazov.epub"
-	epub, err = NewEpubFromFile(fp)
+	epub, err = OpenEpub(fp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +141,7 @@ func TestReadMetadata(t *testing.T) {
 
 	// Test The Stones of Venice
 	fp = "test_data/TheStonesOfVeniceVol2.epub"
-	epub, err = NewEpubFromFile(fp)
+	epub, err = OpenEpub(fp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,4 +169,60 @@ func TestReadMetadata(t *testing.T) {
 	}
 
 	assert.Equal(t, mdataWant, epub.Metadata)
+}
+
+func TestWriteMetadata(t *testing.T) {
+	tmpFp := "test_data/TestEpub.epub"
+
+	og, err := os.ReadFile("test_data/TheBrothersKaramazov.epub")
+	assert.Nil(t, err)
+
+	err = os.WriteFile(tmpFp, og, os.ModePerm)
+	assert.Nil(t, err)
+	defer os.Remove(tmpFp)
+
+	epub, err := OpenEpub(tmpFp)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	newMetadata := &Metadata{
+		title:      "newTitle",
+		titleSort:  "titleNew",
+		author:     "newAuthor",
+		authorSort: "authorNew",
+		language:   "klingon",
+		series:     "newSeries",
+		seriesNum:  42,
+		subjects: []string{
+			"subject1",
+			"subject2",
+		},
+		isbn:      "8675309",
+		publisher: "newPub",
+		pubDate:   "1999-12-31",
+		rights:    "",
+		contributors: []Contributor{
+			{name: "Bob Ross", role: "art"},
+		},
+		description: "fakeMetadata",
+		uid:         "notauid",
+		nubayrahId:  "test_book",
+	}
+
+	epub.Metadata = newMetadata
+
+	err = epub.WriteChanges()
+	assert.Nil(t, err)
+
+	epub.Close()
+
+	epub, err = OpenEpub(tmpFp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer epub.Close()
+
+	assert.Equal(t, newMetadata, epub.Metadata)
+
 }
