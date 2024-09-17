@@ -224,5 +224,62 @@ func TestWriteMetadata(t *testing.T) {
 	defer epub.Close()
 
 	assert.Equal(t, newMetadata, epub.Metadata)
+}
+
+func TestWriteCoverImage(t *testing.T) {
+	tmpFp := "test_data/TestEpub.epub"
+
+	og, err := os.ReadFile("test_data/TheBrothersKaramazov.epub")
+	assert.Nil(t, err)
+
+	err = os.WriteFile(tmpFp, og, os.ModePerm)
+	assert.Nil(t, err)
+	defer os.Remove(tmpFp)
+
+	epub, err := OpenEpub(tmpFp)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	newImage, err := os.ReadFile("test_data/coverImg.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = epub.SetCoverImage(newImage)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = epub.WriteChanges()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	epub.Close()
+
+	epub, err = OpenEpub(tmpFp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer epub.Close()
+
+	coverPath, err := epub.getCoverPath()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cv, err := epub.ReadFile(coverPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// When go converts the test cover image it gets re-encoded and compressed
+	// it is of no use to match file contents or size. Since nobody in their
+	// right mind would use a 2x2 pixel image as a book cover it is probably
+	// safe to assume that an image under 1kb means the write was successful
+	if len(cv) > 1000 {
+		t.Fatal()
+	}
 
 }

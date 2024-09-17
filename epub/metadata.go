@@ -52,6 +52,8 @@ func (m *Metadata) RenderToDoc(rootFile *RootFile) error {
 		return errors.New("malformed package document: package element not found")
 	}
 
+	coverId := rootFile.getCoverId()
+
 	for _, child := range pkgElem.ChildElements() {
 		if child.Tag == "metadata" {
 			pkgElem.RemoveChild(child)
@@ -148,7 +150,6 @@ func (m *Metadata) RenderToDoc(rootFile *RootFile) error {
 	nidElem.CreateAttr("property", "nubayrahId")
 	nidElem.SetText(m.nubayrahId)
 
-	coverId := rootFile.getCoverId()
 	if coverId != "" {
 		metaElem := mdataElem.CreateElement("meta")
 		metaElem.CreateAttr("name", "cover")
