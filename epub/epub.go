@@ -117,9 +117,10 @@ func (e *Epub) getRootFile() (*RootFile, error) {
 // Reads file from zip into byte array
 func (e *Epub) ReadFile(path string) ([]byte, error) {
 	var file *zip.File
-
+	path = filepath.FromSlash(path)
 	for _, f := range e.fileHandle.File {
-		if f.Name == path {
+		n := filepath.FromSlash(f.Name)
+		if n == path {
 			file = f
 			break
 		}
@@ -286,20 +287,22 @@ func (e *Epub) SetCoverImage(cover []byte) error {
 	}
 
 	var b bytes.Buffer
-	foo := bufio.NewWriter(&b)
+	writer := bufio.NewWriter(&b)
 
 	err = nil
 	switch reqMediaType {
-	case "jpg":
-	case "jpeg":
-		err = jpeg.Encode(foo, img, nil)
-	case "png":
-		err = png.Encode(foo, img)
-	case "gif":
-		err = gif.Encode(foo, img, nil)
+	case ".jpg":
+	case ".jpeg":
+		err = jpeg.Encode(writer, img, nil)
+	case ".png":
+		err = png.Encode(writer, img)
+	case ".gif":
+		err = gif.Encode(writer, img, nil)
 	default:
 		err = fmt.Errorf("image conversion to %s is not supported", reqMediaType)
 	}
+
+	writer.Flush()
 
 	if err != nil {
 		return err
