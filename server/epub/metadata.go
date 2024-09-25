@@ -10,28 +10,25 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-
-	"github.com/google/uuid"
 )
 
 type Metadata struct {
-	title        string
-	titleSort    string
-	author       string
-	authorSort   string
-	language     string
-	series       string
-	seriesNum    float64
-	subjects     []string
-	isbn         string
-	publisher    string
-	pubDate      string // iso8601 format
-	rights       string
-	contributors []Contributor
-	description  string
+	Title        string
+	TitleSort    string
+	Author       string
+	AuthorSort   string
+	Language     string
+	Series       string
+	SeriesNum    float64
+	Subjects     []string
+	Isbn         string
+	Publisher    string
+	PubDate      string // iso8601 format
+	Rights       string
+	Contributors []Contributor
+	Description  string
 	// The following fields are not user-editable
-	uid        string
-	nubayrahId string
+	Uid string
 }
 
 type Contributor struct {
@@ -66,64 +63,64 @@ func (m *Metadata) RenderToDoc(rootFile *RootFile) error {
 
 	titleElem := mdataElem.CreateElement("dc:title")
 	titleElem.CreateAttr("id", "title")
-	titleElem.SetText(m.title)
-	if m.titleSort != "" {
+	titleElem.SetText(m.Title)
+	if m.TitleSort != "" {
 		metaElem := mdataElem.CreateElement("meta")
 		metaElem.CreateAttr("refines", "#title")
 		metaElem.CreateAttr("property", "file-as")
-		metaElem.SetText(m.titleSort)
+		metaElem.SetText(m.TitleSort)
 	}
 
 	authElem := mdataElem.CreateElement("dc:creator")
 	authElem.CreateAttr("id", "author")
-	authElem.SetText(m.author)
-	if m.authorSort != "" {
+	authElem.SetText(m.Author)
+	if m.AuthorSort != "" {
 		metaElem := mdataElem.CreateElement("meta")
 		metaElem.CreateAttr("refines", "#author")
 		metaElem.CreateAttr("property", "file-as")
-		metaElem.SetText(m.authorSort)
+		metaElem.SetText(m.AuthorSort)
 	}
 
-	mdataElem.CreateElement("dc:language").SetText(m.language)
+	mdataElem.CreateElement("dc:language").SetText(m.Language)
 
-	if m.series != "" {
+	if m.Series != "" {
 		seriesElem := mdataElem.CreateElement("meta")
 		seriesElem.CreateAttr("property", "belongs-to-collection")
 		seriesElem.CreateAttr("id", "series")
-		seriesElem.SetText(m.series)
+		seriesElem.SetText(m.Series)
 
-		if !math.IsNaN(m.seriesNum) {
+		if !math.IsNaN(m.SeriesNum) {
 			seriesNumElem := mdataElem.CreateElement("meta")
 			seriesNumElem.CreateAttr("refines", "#series")
 			seriesNumElem.CreateAttr("property", "group-position")
-			seriesNumElem.SetText(strconv.FormatFloat(m.seriesNum, 'f', 2, 64))
+			seriesNumElem.SetText(strconv.FormatFloat(m.SeriesNum, 'f', 2, 64))
 		}
 	}
 
-	for _, s := range m.subjects {
+	for _, s := range m.Subjects {
 		mdataElem.CreateElement("dc:subject").SetText(s)
 	}
 
-	if m.isbn != "" {
+	if m.Isbn != "" {
 		isbnElem := mdataElem.CreateElement("dc:identifier")
 		isbnElem.CreateAttr("opf:scheme", "ISBN")
 		isbnElem.CreateAttr("id", "ISBN")
-		isbnElem.SetText(m.isbn)
+		isbnElem.SetText(m.Isbn)
 	}
 
-	if m.publisher != "" {
-		mdataElem.CreateElement("dc:publisher").SetText(m.publisher)
+	if m.Publisher != "" {
+		mdataElem.CreateElement("dc:publisher").SetText(m.Publisher)
 	}
 
-	if m.pubDate != "" {
-		mdataElem.CreateElement("dc:date").SetText(m.pubDate)
+	if m.PubDate != "" {
+		mdataElem.CreateElement("dc:date").SetText(m.PubDate)
 	}
 
-	if m.rights != "" {
-		mdataElem.CreateElement("dc:rights").SetText(m.rights)
+	if m.Rights != "" {
+		mdataElem.CreateElement("dc:rights").SetText(m.Rights)
 	}
 
-	for i, c := range m.contributors {
+	for i, c := range m.Contributors {
 		id := fmt.Sprintf("contributor_%d", i)
 		contElem := mdataElem.CreateElement("dc:contributor")
 		contElem.CreateAttr("id", id)
@@ -134,21 +131,14 @@ func (m *Metadata) RenderToDoc(rootFile *RootFile) error {
 		metaElem.SetText(c.role)
 	}
 
-	if m.description != "" {
-		mdataElem.CreateElement("dc:description").SetText(m.description)
+	if m.Description != "" {
+		mdataElem.CreateElement("dc:description").SetText(m.Description)
 	}
 
 	idId := pkgElem.SelectAttrValue("unique-identifier", "uid")
 	uidElem := mdataElem.CreateElement("dc:identifier")
 	uidElem.CreateAttr("id", idId)
-	uidElem.SetText(m.uid)
-
-	if m.nubayrahId == "" {
-		m.nubayrahId = uuid.New().String()
-	}
-	nidElem := mdataElem.CreateElement("meta")
-	nidElem.CreateAttr("property", "nubayrahId")
-	nidElem.SetText(m.nubayrahId)
+	uidElem.SetText(m.Uid)
 
 	if coverId != "" {
 		metaElem := mdataElem.CreateElement("meta")

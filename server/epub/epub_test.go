@@ -43,14 +43,14 @@ func TestReadMetadata(t *testing.T) {
 	}
 
 	mdataWant := &Metadata{
-		title:      "Moby Dick; Or, The Whale",
-		titleSort:  "",
-		author:     "Herman Melville",
-		authorSort: "Melville, Herman",
-		language:   "en",
-		series:     "",
-		seriesNum:  f64MIN,
-		subjects: []string{
+		Title:      "Moby Dick; Or, The Whale",
+		TitleSort:  "",
+		Author:     "Herman Melville",
+		AuthorSort: "Melville, Herman",
+		Language:   "en",
+		Series:     "",
+		SeriesNum:  f64MIN,
+		Subjects: []string{
 			"Whaling -- Fiction",
 			"Sea stories",
 			"Psychological fiction",
@@ -61,18 +61,18 @@ func TestReadMetadata(t *testing.T) {
 			"Whales -- Fiction",
 			"Whaling ships -- Fiction",
 		},
-		isbn:         "",
-		publisher:    "",
-		pubDate:      "2001-07-01",
-		rights:       "Public domain in the USA.",
-		contributors: []Contributor{},
-		description:  "",
-		uid:          "http://www.gutenberg.org/2701",
+		Isbn:         "",
+		Publisher:    "",
+		PubDate:      "2001-07-01",
+		Rights:       "Public domain in the USA.",
+		Contributors: []Contributor{},
+		Description:  "",
+		Uid:          "http://www.gutenberg.org/2701",
 	}
 
 	// NaN != NaN, so check it first then sub in f64 min
-	assert.NotEqual(t, math.NaN(), epub.Metadata.seriesNum)
-	epub.Metadata.seriesNum = f64MIN
+	assert.NotEqual(t, math.NaN(), epub.Metadata.SeriesNum)
+	epub.Metadata.SeriesNum = f64MIN
 
 	assert.Equal(t, mdataWant, epub.Metadata)
 
@@ -83,21 +83,21 @@ func TestReadMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 	mdataWant = &Metadata{
-		title:        "The stone age in North America, vol. II",
-		titleSort:    "",
-		author:       "Warren K. Moorehead",
-		authorSort:   "Moorehead, Warren K. (Warren King)",
-		language:     "en",
-		series:       "The Stone Age In North America",
-		seriesNum:    2,
-		subjects:     []string{},
-		isbn:         "",
-		publisher:    "",
-		pubDate:      "2024-09-07",
-		rights:       "Public domain in the USA.",
-		contributors: []Contributor{},
-		description:  "",
-		uid:          "http://www.gutenberg.org/74390",
+		Title:        "The stone age in North America, vol. II",
+		TitleSort:    "",
+		Author:       "Warren K. Moorehead",
+		AuthorSort:   "Moorehead, Warren K. (Warren King)",
+		Language:     "en",
+		Series:       "The Stone Age In North America",
+		SeriesNum:    2,
+		Subjects:     []string{},
+		Isbn:         "",
+		Publisher:    "",
+		PubDate:      "2024-09-07",
+		Rights:       "Public domain in the USA.",
+		Contributors: []Contributor{},
+		Description:  "",
+		Uid:          "http://www.gutenberg.org/74390",
 	}
 	assert.Equal(t, mdataWant, epub.Metadata)
 
@@ -109,33 +109,33 @@ func TestReadMetadata(t *testing.T) {
 	}
 
 	mdataWant = &Metadata{
-		title:      "The Brothers Karamazov",
-		titleSort:  "Brothers Karamazov, The",
-		author:     "Fyodor Dostoyevsky",
-		authorSort: "Dostoyevsky, Fyodor",
-		language:   "en",
-		series:     "",
-		seriesNum:  f64MIN,
-		subjects: []string{
+		Title:      "The Brothers Karamazov",
+		TitleSort:  "Brothers Karamazov, The",
+		Author:     "Fyodor Dostoyevsky",
+		AuthorSort: "Dostoyevsky, Fyodor",
+		Language:   "en",
+		Series:     "",
+		SeriesNum:  f64MIN,
+		Subjects: []string{
 			"Didactic fiction",
 			"Fathers and sons -- Fiction",
 			"Russia -- Social life and customs -- 1533-1917 -- Fiction",
 			"Brothers -- Fiction",
 		},
-		isbn:      "0374528373",
-		publisher: "",
-		pubDate:   "2009-02-12",
-		rights:    "Public domain in the USA.",
-		contributors: []Contributor{
+		Isbn:      "0374528373",
+		Publisher: "",
+		PubDate:   "2009-02-12",
+		Rights:    "Public domain in the USA.",
+		Contributors: []Contributor{
 			{name: "Constance Garnett", role: "trl"},
 		},
-		description: "",
-		uid:         "http://www.gutenberg.org/28054",
+		Description: "",
+		Uid:         "http://www.gutenberg.org/28054",
 	}
 
 	// NaN != NaN, so check it first then sub in f64 min
-	assert.NotEqual(t, math.NaN(), epub.Metadata.seriesNum)
-	epub.Metadata.seriesNum = f64MIN
+	assert.NotEqual(t, math.NaN(), epub.Metadata.SeriesNum)
+	epub.Metadata.SeriesNum = f64MIN
 
 	assert.Equal(t, mdataWant, epub.Metadata)
 
@@ -147,25 +147,25 @@ func TestReadMetadata(t *testing.T) {
 	}
 
 	mdataWant = &Metadata{
-		title:      "The Stones of Venice",
-		titleSort:  "Stones of Venice, The",
-		author:     "John Ruskin",
-		authorSort: "Ruskin, John",
-		language:   "en",
-		series:     "The Stones of Venice",
-		seriesNum:  2,
-		subjects: []string{
+		Title:      "The Stones of Venice",
+		TitleSort:  "Stones of Venice, The",
+		Author:     "John Ruskin",
+		AuthorSort: "Ruskin, John",
+		Language:   "en",
+		Series:     "The Stones of Venice",
+		SeriesNum:  2,
+		Subjects: []string{
 			"Architecture -- Italy -- Venice",
 		},
-		isbn:      "",
-		publisher: "",
-		pubDate:   "2009-12-31",
-		rights:    "Public domain in the USA.",
-		contributors: []Contributor{
+		Isbn:      "",
+		Publisher: "",
+		PubDate:   "2009-12-31",
+		Rights:    "Public domain in the USA.",
+		Contributors: []Contributor{
 			{name: "calibre (7.12.0) [https://calibre-ebook.com]", role: "bkp"},
 		},
-		description: "",
-		uid:         "http://www.gutenberg.org/30755",
+		Description: "",
+		Uid:         "http://www.gutenberg.org/30755",
 	}
 
 	assert.Equal(t, mdataWant, epub.Metadata)
@@ -187,27 +187,26 @@ func TestWriteMetadata(t *testing.T) {
 	}
 
 	newMetadata := &Metadata{
-		title:      "newTitle",
-		titleSort:  "titleNew",
-		author:     "newAuthor",
-		authorSort: "authorNew",
-		language:   "klingon",
-		series:     "newSeries",
-		seriesNum:  42,
-		subjects: []string{
+		Title:      "newTitle",
+		TitleSort:  "titleNew",
+		Author:     "newAuthor",
+		AuthorSort: "authorNew",
+		Language:   "klingon",
+		Series:     "newSeries",
+		SeriesNum:  42,
+		Subjects: []string{
 			"subject1",
 			"subject2",
 		},
-		isbn:      "8675309",
-		publisher: "newPub",
-		pubDate:   "1999-12-31",
-		rights:    "",
-		contributors: []Contributor{
+		Isbn:      "8675309",
+		Publisher: "newPub",
+		PubDate:   "1999-12-31",
+		Rights:    "",
+		Contributors: []Contributor{
 			{name: "Bob Ross", role: "art"},
 		},
-		description: "fakeMetadata",
-		uid:         "notauid",
-		nubayrahId:  "test_book",
+		Description: "fakeMetadata",
+		Uid:         "notauid",
 	}
 
 	epub.Metadata = newMetadata
@@ -264,7 +263,7 @@ func TestWriteCoverImage(t *testing.T) {
 	}
 	defer epub.Close()
 
-	coverPath, err := epub.getCoverPath()
+	coverPath, err := epub.GetCoverPath()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -22,7 +22,7 @@ import (
 )
 
 type Epub struct {
-	filepath   string
+	Filepath   string
 	Metadata   *Metadata
 	fileHandle *zip.ReadCloser
 	rootFile   *RootFile
@@ -184,7 +184,7 @@ func (e *Epub) unpack(destination string) error {
 
 // Writes changes to metadata and cover image to epub file
 func (e *Epub) WriteChanges() error {
-	tmpDir := filepath.Join(os.TempDir(), filepath.Base(strings.Split(e.filepath, ".")[0]))
+	tmpDir := filepath.Join(os.TempDir(), filepath.Base(strings.Split(e.Filepath, ".")[0]))
 	tmpFile := tmpDir + ".epub"
 
 	e.unpack(tmpDir)
@@ -235,8 +235,8 @@ func (e *Epub) WriteChanges() error {
 
 	zipWriter.Close()
 	file.Close()
-	e.fileHandle.Close()
-	err = os.Rename(tmpFile, e.filepath)
+	e.fileHandle = nil
+	err = os.Rename(tmpFile, e.Filepath)
 	if err != nil {
 		return err
 	}
