@@ -18,27 +18,26 @@ type RootFile struct {
 func ExtractMetadata(doc *RootFile) *Metadata {
 	mdata := &Metadata{}
 
-	mdata.title, mdata.titleSort = doc.getTitle()
-	mdata.author, mdata.authorSort = doc.getAuthor()
-	mdata.language = doc.getLanguage()
-	mdata.series, mdata.seriesNum = doc.getSeries()
-	mdata.subjects = doc.getSubjects()
-	mdata.isbn = doc.getISBN()
-	mdata.publisher = doc.getPublisher()
-	mdata.pubDate = doc.getPubDate()
-	mdata.rights = doc.getRights()
-	mdata.contributors = doc.getContributors()
-	mdata.description = doc.getDescription()
+	mdata.Title, mdata.TitleSort = doc.getTitle()
+	mdata.Author, mdata.AuthorSort = doc.getAuthor()
+	mdata.Language = doc.getLanguage()
+	mdata.Series, mdata.SeriesNum = doc.getSeries()
+	mdata.Subjects = doc.getSubjects()
+	mdata.Isbn = doc.getISBN()
+	mdata.Publisher = doc.getPublisher()
+	mdata.PubDate = doc.getPubDate()
+	mdata.Rights = doc.getRights()
+	mdata.Contributors = doc.getContributors()
+	mdata.Description = doc.getDescription()
 
-	mdata.uid = doc.getUID()
-	mdata.nubayrahId = doc.getNubayrahId()
+	mdata.Uid = doc.getUID()
 
 	return mdata
 }
 
 // Reads title, titleSort from xml doc
 func (f *RootFile) getTitle() (title string, titleSort string) {
-
+	title = "Unknown Title"
 	titleElem := f.FindElement("//dc:title")
 	if titleElem == nil {
 		return
@@ -64,6 +63,7 @@ func (f *RootFile) getTitle() (title string, titleSort string) {
 
 // Reads author and authorSort from xml doc
 func (f *RootFile) getAuthor() (author string, authorSort string) {
+	author = "Unknown Author"
 	metaElem := f.FindElement("//dc:creator")
 	if metaElem == nil {
 		return
