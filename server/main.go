@@ -7,8 +7,14 @@ import (
 func main() {
 	log.Printf("Starting Nubayrah Server")
 
+	err := OpenConfig()
+	if err != nil {
+		log.Printf("error opening config file %v", err)
+		panic(err)
+	}
+
 	// Start with connecting to the Database
-	err := OpenDatabase()
+	err = OpenDatabase()
 	if err != nil {
 		log.Printf("error when connecting to postgresql database %v", err)
 	}
