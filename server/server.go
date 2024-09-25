@@ -41,5 +41,6 @@ func NewServer() error {
 
 	r.Delete("/books/{bookID}", handleDeleteBook)
 
-	return http.ListenAndServe(":5050", r)
+	return http.ListenAndServe("localhost:5050", r)
+
 }
