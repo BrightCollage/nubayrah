@@ -11,6 +11,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -24,25 +25,72 @@ import (
 type Epub struct {
 	Filepath   string
 	Metadata   *Metadata
-	fileHandle *zip.ReadCloser
+	fileHandle *zip.Reader
 	rootFile   *RootFile
 	coverImage []byte
 }
 
+// Opens and parses epub from file on disk
 func OpenEpub(filepath string) (*Epub, error) {
 	epub := &Epub{}
-	epub.filepath = filepath
+	epub.Filepath = filepath
 
-	return epub, epub.Reload()
+	err := epub.Reload()
+	if err != nil {
+		return nil, err
+	}
+
+	return epub, nil
+}
+
+// Opens and parses epub archive from byte array
+func OpenEpubBytes(data []byte) (*Epub, error) {
+	var err error = nil
+	epub := &Epub{}
+
+	rdr := bytes.NewReader(data)
+
+	epub.fileHandle, err = zip.NewReader(rdr, rdr.Size())
+	if err != nil {
+		return nil, err
+	}
+
+	err = epub.Reload()
+	if err != nil {
+		return nil, err
+	}
+
+	return epub, nil
+}
+
+// Checks if first 4 bytes match epub magic bytes described here:
+// https://en.wikipedia.org/wiki/List_of_file_signatures
+// Does not confirm that a file *is* an epub or valid archive
+func CheckMagic(data [4]byte) bool {
+	return data == [4]byte{0x50, 0x4B, 0x03, 0x04} ||
+		data == [4]byte{0x50, 0x4B, 0x05, 0x06} ||
+		data == [4]byte{0x50, 0x4B, 0x07, 0x08}
 }
 
 // Reopens and reads epub from disk
 func (e *Epub) Reload() error {
-	e.Close()
 	var err error = nil
-	e.fileHandle, err = zip.OpenReader(e.filepath)
-	if err != nil {
-		return err
+
+	if e.Filepath == "" {
+		log.Print("epub filepath is empty, cannot reload from disk")
+	} else {
+		e.Close()
+
+		bts, err := os.ReadFile(e.Filepath)
+		if err != nil {
+			return err
+		}
+		rdr := bytes.NewReader(bts)
+
+		e.fileHandle, err = zip.NewReader(rdr, rdr.Size())
+		if err != nil {
+			return err
+		}
 	}
 
 	e.rootFile, err = e.getRootFile()
@@ -60,7 +108,6 @@ func (e *Epub) Reload() error {
 // Closes open file handles and renders epub invalid for writing
 func (e *Epub) Close() {
 	if e.fileHandle != nil {
-		e.fileHandle.Close()
 		e.fileHandle = nil
 	}
 	e.Metadata = nil
@@ -135,10 +182,38 @@ func (e *Epub) ReadFile(path string) ([]byte, error) {
 		return nil, err
 	}
 	defer c.Close()
-	buf := make([]byte, int(file.UncompressedSize64))
-	c.Read(buf)
 
-	return buf, nil
+	data, err := io.ReadAll(c)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
+// Extract cover image into destination directory
+// eg ExtractCoverImage("/library/author") may result in a file
+// `/library/author/cover_image_123456789.png`
+// Returns the full path to the cover image
+func (e *Epub) ExtractCoverImage(destDir string) (string, error) {
+	source, err := e.GetCoverPath()
+	if err != nil {
+		return "", err
+	}
+
+	data, err := e.ReadFile(source)
+	if err != nil {
+		return "", err
+	}
+
+	destFile := filepath.Join(destDir, filepath.Base(source))
+
+	err = os.WriteFile(destFile, data, os.ModePerm)
+	if err != nil {
+		return "", nil
+	}
+
+	return destFile, nil
 }
 
 // Unpacks epub to destination directory
@@ -206,7 +281,7 @@ func (e *Epub) WriteChanges() error {
 
 	// Cover image
 	if len(e.coverImage) != 0 {
-		coverPath, err := e.getCoverPath()
+		coverPath, err := e.GetCoverPath()
 		if err != nil {
 			return err
 		}
@@ -245,7 +320,7 @@ func (e *Epub) WriteChanges() error {
 }
 
 // Returns internal path to cover image
-func (e *Epub) getCoverPath() (string, error) {
+func (e *Epub) GetCoverPath() (string, error) {
 	metaElem := e.rootFile.FindElement("//package/metadata/meta[@name='cover']")
 	if metaElem == nil {
 		return "", errors.New("cover id not found in metadata")
@@ -275,7 +350,7 @@ func (e *Epub) SetCoverImage(cover []byte) error {
 		return fmt.Errorf("invalid media type %s", newMediaType)
 	}
 
-	destination, err := e.getCoverPath()
+	destination, err := e.GetCoverPath()
 	if err != nil {
 		return err
 	}
