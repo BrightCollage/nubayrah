@@ -1,96 +1,190 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"io"
 	"log"
+	"main/epub"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 )
 
 type Book struct {
-	ID          int    `json:"id"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
+	epub.Metadata
+	ID       int `json:"id"`
+	Filepath string
 }
 
-type ImportBookBody struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
-}
-
-// Handler for creating importing a book.
+// Handler for importing an epub
 func handleImportBook(w http.ResponseWriter, r *http.Request) {
-
-	var body ImportBookBody
-
-	// Creates a Decoder which reads json data from a data stream and converts it to structured data.
-	// NewDecoder takes in an io.Reader, r.Body in this case, which then reads the ioStream.
-	// .Decodes(&dst) takes an argument, which is the destination location for the decoded output information.
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	// Read file contents from request
+	file, _, err := r.FormFile("epub")
+	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		log.Printf("error decoding request body into ImportBookBody struct %v", err)
+		log.Printf("error reading file from post requiest %v", err)
 		return
 	}
 
-	// We ask the DB object to send a SQL query to INSERT a data row to the Books table with 2 columns: title and description.
-	// The values are the $1 -> body.Title and $2 -> body.Description
-	if err := DB.QueryRow("INSERT INTO library (title, description) VALUES ($1, $2)", body.Title, body.Description).Err(); err != nil {
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, file)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("error copying file data %v", err)
+		return
+	}
+
+	data := buf.Bytes()
+
+	// Validate first by checking magic bytes, then attempting to parse the epub's metadata
+	var magic [4]byte
+	copy(magic[:], data[:4])
+	if !epub.CheckMagic(magic) {
+		w.WriteHeader(http.StatusUnsupportedMediaType)
+		log.Printf("magic bytes invalid for uploaded epub: %v", magic)
+		return
+	}
+
+	epub, err := epub.OpenEpubBytes(data)
+	if err != nil {
+		w.WriteHeader(http.StatusUnsupportedMediaType)
+		log.Printf("error opening epub archive %v", err)
+	}
+
+	// Write epub to disk at library/author/title.epub
+	targetDir := filepath.Join(userConfig.LibraryRoot, epub.Metadata.Author)
+	targetDir = sanitizeDirName(targetDir)
+
+	err = os.MkdirAll(targetDir, os.ModePerm)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("cannot create directories %v", err)
+		return
+	}
+
+	targetFile := filepath.Join(targetDir, sanitizeFileName(epub.Metadata.Title)) + ".epub"
+	// If a file exists with the desired name, start incrementing as filename_1
+	// until an unused filename is found
+	if fileExists(targetFile) {
+		k := strings.LastIndex(targetFile, ".")
+		targetFile = targetFile[:k] + "_%d" + ".epub"
+		for i := 1; i < 256; i++ {
+			numberedTarget := fmt.Sprintf(targetFile, i)
+			if !fileExists(numberedTarget) {
+				targetFile = numberedTarget
+				break
+			}
+			if i == 255 {
+				w.WriteHeader(http.StatusInternalServerError)
+				log.Printf("unable to find unused filename for %v", targetFile)
+				return
+			}
+		}
+	}
+
+	epub.Filepath = targetFile
+	err = os.WriteFile(targetFile, data, os.ModePerm)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("error writing epub file to disk %v", err)
+	}
+
+	// Extract cover image to library/author/{covername}.ext
+	coverFilepath, err := epub.ExtractCoverImage(targetDir)
+	if err != nil {
+		log.Printf("error extracting cover image %v", err)
+	}
+
+	// Insert into db
+	subjects, err := json.Marshal(epub.Metadata.Subjects)
+	if err != nil {
+		subjects = []byte{}
+	}
+
+	contribs, err := json.Marshal(epub.Metadata.Contributors)
+	if err != nil {
+		contribs = []byte{}
+	}
+
+	insertQ := `INSERT INTO library
+	(id,  filepath, title, titleSort, author, authorSort, language, series, seriesNum, subjects, isbn, publisher, pubDate, rights, contributors, description, uid) VALUES
+	(NULL,       $1,   $2,        $3,     $4,         $5,       $6,     $7,        $8,       $9,  $10,       $11,     $12,    $13,          $14,         $15, $16)`
+	res, err := DB.Exec(insertQ,
+		epub.Filepath,
+		epub.Metadata.Title,
+		epub.Metadata.TitleSort,
+		epub.Metadata.Author,
+		epub.Metadata.AuthorSort,
+		epub.Metadata.Language,
+		epub.Metadata.Series,
+		strconv.FormatFloat(epub.Metadata.SeriesNum, 'f', 2, 64),
+		string(subjects),
+		epub.Metadata.Isbn,
+		epub.Metadata.Publisher,
+		epub.Metadata.PubDate,
+		epub.Metadata.Rights,
+		string(contribs),
+		epub.Metadata.Description,
+		epub.Metadata.Uid)
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Printf("error when querying to DB %v", err)
+		os.Remove(coverFilepath)
+		os.Remove(epub.Filepath)
 		return
 	}
 
-	// Once done, we just return a status saying that the create was successful.
-	w.WriteHeader(http.StatusCreated)
+	// Rename cover image to n.ext where n is the id for the new row in the db
+	n, _ := res.LastInsertId()
+	d, f := filepath.Split(coverFilepath)
+	ext := filepath.Ext(f)
+	err = os.Rename(coverFilepath, filepath.Join(d, strconv.FormatInt(n, 10)+ext))
+	if err != nil {
+		log.Printf("error renaming cover image %v", err)
+	}
 
+	w.WriteHeader(http.StatusCreated)
 }
 
 // Handler for root link /books
 func handleGetAllBooks(w http.ResponseWriter, _ *http.Request) {
-	var Books []Book
-
-	// Query the database table 'Books' and select the columns: id, title, and description from the table
-	rows, err := DB.Query("SELECT id, title, description FROM library")
+	rows, err := DB.Query("SELECT * from library;")
 	if err != nil {
+		log.Printf("error reading database %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
-	}
-
-	// For loop checks the next item in row, until there are no rows left, in which it will return a False.
-	for rows.Next() {
-		// fetchedItem is a struct object that contains json marshalling format for our Book.
-		var fetchedItem Book
-		// rows.Scan(...) will fill each argument with a value it finds in the row.
-		// That is why we pass them the location (pointer) to where we want the values filled. In this case, it is
-		// each of the struct's members.
-		if err := rows.Scan(&fetchedItem.ID, &fetchedItem.Title, &fetchedItem.Description); err != nil {
-			// Check any line for error.
-			log.Printf("Error when scanning rows %v", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		// If columns are successfully 'Scanned' then we add the object to the list.
-		Books = append(Books, fetchedItem)
-	}
-
-	// Takes the list of object we have above and we will make it json data.
-	j, err := json.Marshal(Books)
-	// Check error in marshalling
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("error marshalling Books into json %v", err)
 		return
 	}
 
-	// If query from database + creating marshallable object + converting to json object OK, then we write the values back.
+	books := []Book{}
+	for rows.Next() {
+		b, err := rowToMetadata(rows)
+		if err != nil {
+			log.Printf("error reading database %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		books = append(books, *b)
+	}
+
+	j, err := json.Marshal(books)
+	if err != nil {
+		log.Printf("error marshalling books into json %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	w.Write(j)
 }
 
-// Handler for getting a specific book.
+// Handler for getting a specific book at /books/{bookID}
 func handleGetBook(w http.ResponseWriter, r *http.Request) {
-	// Grab ID from the URL, which is /todo/{todoID}
 	bookID, err := strconv.Atoi(chi.URLParam(r, "bookID"))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -98,27 +192,25 @@ func handleGetBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var Book Book
-
-	// Query to postgresql that grabs the columns, id, title, description from the table called Books and filters columns where the id is
-	// input value.
-	query := `SELECT id, title, description FROM library WHERE id=$1;`
-	// Query for a single row
-	row := DB.QueryRow(query, bookID)
-	if err := row.Scan(&Book.ID, &Book.Title, &Book.Description); err != nil {
-		if err == sql.ErrNoRows {
-			log.Printf("Error: %v", err)
-			w.WriteHeader(http.StatusNotFound)
-		} else {
-			log.Printf("Error when scanning rows: %v", err)
-			w.WriteHeader(http.StatusInternalServerError)
-		}
+	row, err := DB.Query("SELECT * FROM library WHERE id=$1;", bookID)
+	if err != nil {
+		log.Printf("error reading database %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
-	j, err := json.Marshal(Book)
+	row.Next()
+	book, err := rowToMetadata(row)
 	if err != nil {
+		log.Printf("error reading database %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("error while marshalling Book to json %v", err)
+		return
+	}
+
+	j, err := json.Marshal(book)
+	if err != nil {
+		log.Printf("error marshalling books into json %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -150,4 +242,42 @@ func handleDeleteBook(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Count deleted: %v", count)
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// Scan and parse database row into book
+// Some fields (eg any array) cannot be stored directly in the db and are
+// encoded/decoded as json
+func rowToMetadata(row *sql.Rows) (*Book, error) {
+	b := &Book{}
+
+	var subjects string
+	var contribs string
+
+	err := row.Scan(
+		&b.ID,
+		&b.Filepath,
+		&b.Metadata.Title,
+		&b.Metadata.TitleSort,
+		&b.Metadata.Author,
+		&b.Metadata.AuthorSort,
+		&b.Metadata.Language,
+		&b.Metadata.Series,
+		&b.Metadata.SeriesNum,
+		&subjects,
+		&b.Metadata.Isbn,
+		&b.Metadata.Publisher,
+		&b.Metadata.PubDate,
+		&b.Metadata.Rights,
+		&contribs,
+		&b.Metadata.Description,
+		&b.Metadata.Uid,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	json.Unmarshal([]byte(subjects), &b.Subjects)
+	json.Unmarshal([]byte(contribs), &b.Contributors)
+
+	return b, nil
 }

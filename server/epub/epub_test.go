@@ -1,14 +1,11 @@
 package epub
 
 import (
-	"math"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
-
-const f64MIN = -179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.0000000000000000
 
 func TestGetRootDoc(t *testing.T) {
 
@@ -49,7 +46,7 @@ func TestReadMetadata(t *testing.T) {
 		AuthorSort: "Melville, Herman",
 		Language:   "en",
 		Series:     "",
-		SeriesNum:  f64MIN,
+		SeriesNum:  -1,
 		Subjects: []string{
 			"Whaling -- Fiction",
 			"Sea stories",
@@ -69,10 +66,6 @@ func TestReadMetadata(t *testing.T) {
 		Description:  "",
 		Uid:          "http://www.gutenberg.org/2701",
 	}
-
-	// NaN != NaN, so check it first then sub in f64 min
-	assert.NotEqual(t, math.NaN(), epub.Metadata.SeriesNum)
-	epub.Metadata.SeriesNum = f64MIN
 
 	assert.Equal(t, mdataWant, epub.Metadata)
 
@@ -115,7 +108,7 @@ func TestReadMetadata(t *testing.T) {
 		AuthorSort: "Dostoyevsky, Fyodor",
 		Language:   "en",
 		Series:     "",
-		SeriesNum:  f64MIN,
+		SeriesNum:  -1,
 		Subjects: []string{
 			"Didactic fiction",
 			"Fathers and sons -- Fiction",
@@ -132,10 +125,6 @@ func TestReadMetadata(t *testing.T) {
 		Description: "",
 		Uid:         "http://www.gutenberg.org/28054",
 	}
-
-	// NaN != NaN, so check it first then sub in f64 min
-	assert.NotEqual(t, math.NaN(), epub.Metadata.SeriesNum)
-	epub.Metadata.SeriesNum = f64MIN
 
 	assert.Equal(t, mdataWant, epub.Metadata)
 
