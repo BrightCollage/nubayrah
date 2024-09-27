@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -28,9 +29,13 @@ func NewServer() error {
 	// Use Logger for REST API request logging.
 	r.Use(middleware.Logger)
 
-	// TODO: default route
 	r.Get("/", func(w http.ResponseWriter, _ *http.Request) {
-		w.Write([]byte("Hello World!"))
+		index, err := os.ReadFile("../static/index.html")
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Write(index)
 	})
 
 	r.Post("/books", handleImportBook)
