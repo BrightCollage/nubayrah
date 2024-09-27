@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"log"
 	"net/http"
 	"os"
 
@@ -46,6 +48,8 @@ func NewServer() error {
 
 	r.Delete("/books/{bookID}", handleDeleteBook)
 
-	return http.ListenAndServe("localhost:5050", r)
+	addr := fmt.Sprintf("%s:%d", userConfig.Host, userConfig.Port)
+	log.Printf("Listening at %s", addr)
+	return http.ListenAndServe(addr, r)
 
 }
