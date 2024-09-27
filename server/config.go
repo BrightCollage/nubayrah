@@ -7,10 +7,13 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 type Configuration struct {
 	LibraryRoot string
+	Host        string
+	Port        int
 }
 
 var userConfig *Configuration = nil
@@ -30,6 +33,7 @@ func init() {
 // If this file does not exist a new default config is created there
 func OpenConfig() error {
 	log.Printf("Opening config at %s", configFilePath)
+	defer applyConfigEnvars()
 	configBytes, err := os.ReadFile(configFilePath)
 	var perr *fs.PathError
 	if err == os.ErrNotExist || errors.As(err, &perr) {
@@ -46,10 +50,27 @@ func OpenConfig() error {
 	return err
 }
 
+func applyConfigEnvars() {
+	port := os.Getenv("PORT")
+	if port != "" {
+		p, err := strconv.Atoi(port)
+		if err == nil {
+			userConfig.Port = p
+		}
+	}
+
+	host := os.Getenv("HOST")
+	if host != "" {
+		userConfig.Host = host
+	}
+}
+
 // Creates default config and writes to file
 func createNewDefaultConfig() error {
 	config := &Configuration{
 		LibraryRoot: filepath.Join(nubayrahDirectory, "library"),
+		Host:        "localhost",
+		Port:        5050,
 	}
 
 	configBytes, err := json.Marshal(config)
@@ -68,5 +89,4 @@ func createNewDefaultConfig() error {
 
 	userConfig = config
 	return nil
-
 }
