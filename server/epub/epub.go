@@ -267,7 +267,7 @@ func (e *Epub) WriteChanges() error {
 	defer os.Remove(tmpDir)
 
 	// RootFile + Metadata
-	e.Metadata.RenderToDoc(e.rootFile)
+	e.rootFile.InsertMetadata(e.Metadata)
 	rfStr, err := e.rootFile.WriteToString()
 	if err != nil {
 		return err
