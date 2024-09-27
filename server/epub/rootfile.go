@@ -1,6 +1,12 @@
+/*
+https://idpf.org/epub/20/spec/OPF_2.0.1_draft.htm
+https://www.w3.org/TR/epub-33/
+*/
+
 package epub
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -33,6 +39,115 @@ func ExtractMetadata(doc *RootFile) *Metadata {
 	mdata.Uid = doc.getUID()
 
 	return mdata
+}
+
+// Generates <metadata> element and inserts it as first child of <package>,
+// overwriting any existing metadata element
+func (f *RootFile) InsertMetadata(mdata *Metadata) error {
+	pkgElem := f.FindElement("//package")
+	if pkgElem == nil {
+		return errors.New("malformed package document: package element not found")
+	}
+
+	coverId := f.getCoverId()
+
+	for _, child := range pkgElem.ChildElements() {
+		if child.Tag == "metadata" {
+			pkgElem.RemoveChild(child)
+			break
+		}
+	}
+
+	mdataElem := pkgElem.CreateElement("metadata")
+	pkgElem.RemoveChild(mdataElem)
+
+	titleElem := mdataElem.CreateElement("dc:title")
+	titleElem.CreateAttr("id", "title")
+	titleElem.SetText(mdata.Title)
+	if mdata.TitleSort != "" {
+		metaElem := mdataElem.CreateElement("meta")
+		metaElem.CreateAttr("refines", "#title")
+		metaElem.CreateAttr("property", "file-as")
+		metaElem.SetText(mdata.TitleSort)
+	}
+
+	authElem := mdataElem.CreateElement("dc:creator")
+	authElem.CreateAttr("id", "author")
+	authElem.SetText(mdata.Author)
+	if mdata.AuthorSort != "" {
+		metaElem := mdataElem.CreateElement("meta")
+		metaElem.CreateAttr("refines", "#author")
+		metaElem.CreateAttr("property", "file-as")
+		metaElem.SetText(mdata.AuthorSort)
+	}
+
+	mdataElem.CreateElement("dc:language").SetText(mdata.Language)
+
+	if mdata.Series != "" {
+		seriesElem := mdataElem.CreateElement("meta")
+		seriesElem.CreateAttr("property", "belongs-to-collection")
+		seriesElem.CreateAttr("id", "series")
+		seriesElem.SetText(mdata.Series)
+
+		if !math.IsNaN(mdata.SeriesNum) {
+			seriesNumElem := mdataElem.CreateElement("meta")
+			seriesNumElem.CreateAttr("refines", "#series")
+			seriesNumElem.CreateAttr("property", "group-position")
+			seriesNumElem.SetText(strconv.FormatFloat(mdata.SeriesNum, 'f', 2, 64))
+		}
+	}
+
+	for _, s := range mdata.Subjects {
+		mdataElem.CreateElement("dc:subject").SetText(s)
+	}
+
+	if mdata.Isbn != "" {
+		isbnElem := mdataElem.CreateElement("dc:identifier")
+		isbnElem.CreateAttr("opf:scheme", "ISBN")
+		isbnElem.CreateAttr("id", "ISBN")
+		isbnElem.SetText(mdata.Isbn)
+	}
+
+	if mdata.Publisher != "" {
+		mdataElem.CreateElement("dc:publisher").SetText(mdata.Publisher)
+	}
+
+	if mdata.PubDate != "" {
+		mdataElem.CreateElement("dc:date").SetText(mdata.PubDate)
+	}
+
+	if mdata.Rights != "" {
+		mdataElem.CreateElement("dc:rights").SetText(mdata.Rights)
+	}
+
+	for i, c := range mdata.Contributors {
+		id := fmt.Sprintf("contributor_%d", i)
+		contElem := mdataElem.CreateElement("dc:contributor")
+		contElem.CreateAttr("id", id)
+		contElem.SetText(c.name)
+		metaElem := mdataElem.CreateElement("meta")
+		metaElem.CreateAttr("refines", fmt.Sprintf("#%s", id))
+		metaElem.CreateAttr("property", "role")
+		metaElem.SetText(c.role)
+	}
+
+	if mdata.Description != "" {
+		mdataElem.CreateElement("dc:description").SetText(mdata.Description)
+	}
+
+	idId := pkgElem.SelectAttrValue("unique-identifier", "uid")
+	uidElem := mdataElem.CreateElement("dc:identifier")
+	uidElem.CreateAttr("id", idId)
+	uidElem.SetText(mdata.Uid)
+
+	if coverId != "" {
+		metaElem := mdataElem.CreateElement("meta")
+		metaElem.CreateAttr("name", "cover")
+		metaElem.CreateAttr("content", coverId)
+	}
+	pkgElem.InsertChildAt(0, mdataElem)
+
+	return nil
 }
 
 // Reads title, titleSort from xml doc
@@ -97,7 +212,7 @@ func (f *RootFile) getAuthor() (author string, authorSort string) {
 // Reads series, seriesNum from xml doc
 // If there is no seriesNum the value will be -1
 func (f *RootFile) getSeries() (series string, seriesNum float64) {
-	seriesNum = math.NaN()
+	seriesNum = -1
 	seriesMetaElem := f.FindElement("//meta[@property='belongs-to-collection']")
 	if seriesMetaElem != nil {
 		series = seriesMetaElem.Text()
@@ -221,18 +336,10 @@ func (f *RootFile) getUID() string {
 	return uidElem.Text()
 }
 
-func (f *RootFile) getNubayrahId() string {
-	idElem := f.FindElement("//meta[@property='nubayrahId']")
-	if idElem == nil {
-		return ""
-	}
-	return idElem.Text()
-}
-
 func (f *RootFile) getCoverId() string {
 	elem := f.FindElement("//meta[@name='cover']")
 	if elem == nil {
-		return ""
+		return "cover-image"
 	}
 	return elem.SelectAttrValue("content", "")
 }
