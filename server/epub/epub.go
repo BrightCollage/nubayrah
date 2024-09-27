@@ -321,14 +321,9 @@ func (e *Epub) WriteChanges() error {
 
 // Returns internal path to cover image
 func (e *Epub) GetCoverPath() (string, error) {
-	metaElem := e.rootFile.FindElement("//package/metadata/meta[@name='cover']")
-	if metaElem == nil {
-		return "", errors.New("cover id not found in metadata")
-	}
-
-	coverId := metaElem.SelectAttrValue("content", "")
+	coverId := e.rootFile.getCoverId()
 	if coverId == "" {
-		return "", errors.New("cover meta element missing content attribute")
+		return "", fmt.Errorf("cover id not found in root doc")
 	}
 
 	itemElem := e.rootFile.FindElement(fmt.Sprintf("//package/manifest/item[@id='%s']", coverId))
