@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"main/db"
 	"main/epub"
 	"net/http"
 	"os"
@@ -116,7 +117,7 @@ func handleImportBook(w http.ResponseWriter, r *http.Request) {
 	insertQ := `INSERT INTO library
 	(id,  filepath, title, titleSort, author, authorSort, language, series, seriesNum, subjects, isbn, publisher, pubDate, rights, contributors, description, uid) VALUES
 	(NULL,       $1,   $2,        $3,     $4,         $5,       $6,     $7,        $8,       $9,  $10,       $11,     $12,    $13,          $14,         $15, $16)`
-	res, err := DB.Exec(insertQ,
+	res, err := db.DB.Exec(insertQ,
 		epub.Filepath,
 		epub.Metadata.Title,
 		epub.Metadata.TitleSort,
@@ -155,7 +156,7 @@ func handleImportBook(w http.ResponseWriter, r *http.Request) {
 
 // Handler for root link /books
 func handleGetAllBooks(w http.ResponseWriter, _ *http.Request) {
-	rows, err := DB.Query("SELECT * from library;")
+	rows, err := db.DB.Query("SELECT * from library;")
 	if err != nil {
 		log.Printf("error reading database %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -192,7 +193,7 @@ func handleGetBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	row, err := DB.Query("SELECT * FROM library WHERE id=$1;", bookID)
+	row, err := db.DB.Query("SELECT * FROM library WHERE id=$1;", bookID)
 	if err != nil {
 		log.Printf("error reading database %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -231,7 +232,7 @@ func handleDeleteBook(w http.ResponseWriter, r *http.Request) {
 	sqlStatement := `
 	DELETE FROM library
 	WHERE id = $1;`
-	res, err := DB.Exec(sqlStatement, bookID)
+	res, err := db.DB.Exec(sqlStatement, bookID)
 	if err != nil {
 		panic(err)
 	}
