@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"main/db"
 )
 
 func main() {
@@ -14,11 +15,12 @@ func main() {
 	}
 
 	// Start with connecting to the Database
-	err = OpenDatabase()
+	err = db.OpenDatabase()
 	if err != nil {
-		log.Printf("error when connecting to postgresql database %v", err)
+		log.Printf("error when connecting to database %v", err)
+		panic(err)
 	}
-	defer CloseDatabase()
+	defer db.CloseDatabase()
 
 	// Started HTTPServer
 	err = NewServer()
