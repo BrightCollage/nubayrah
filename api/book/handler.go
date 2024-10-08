@@ -1,4 +1,4 @@
-package main
+package book
 
 import (
 	"bytes"
@@ -7,22 +7,19 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"main/db"
-	"main/epub"
 	"net/http"
+	"nubayrah/db"
+	"nubayrah/epub"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 )
 
-type Book struct {
-	epub.Metadata
-	ID       int `json:"id"`
-	Filepath string
-}
+const libararyRoot = "library/"
 
 // Handler for importing an epub
 func handleImportBook(w http.ResponseWriter, r *http.Request) {
@@ -60,7 +57,7 @@ func handleImportBook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Write epub to disk at library/author/title.epub
-	targetDir := filepath.Join(userConfig.LibraryRoot, epub.Metadata.Author)
+	targetDir := filepath.Join(libararyRoot, epub.Metadata.Author)
 	targetDir = sanitizeDirName(targetDir)
 
 	err = os.MkdirAll(targetDir, os.ModePerm)
@@ -116,8 +113,9 @@ func handleImportBook(w http.ResponseWriter, r *http.Request) {
 
 	insertQ := `INSERT INTO library
 	(id,  filepath, title, titleSort, author, authorSort, language, series, seriesNum, subjects, isbn, publisher, pubDate, rights, contributors, description, uid) VALUES
-	(NULL,       $1,   $2,        $3,     $4,         $5,       $6,     $7,        $8,       $9,  $10,       $11,     $12,    $13,          $14,         $15, $16)`
+	($1,   $2,        $3,     $4,         $5,       $6,     $7,        $8,       $9,  $10,       $11,     $12,    $13,          $14,         $15, $16, $17)`
 	res, err := db.DB.Exec(insertQ,
+		uuid.New(),
 		epub.Filepath,
 		epub.Metadata.Title,
 		epub.Metadata.TitleSort,
@@ -158,7 +156,7 @@ func handleImportBook(w http.ResponseWriter, r *http.Request) {
 func handleGetAllBooks(w http.ResponseWriter, _ *http.Request) {
 	rows, err := db.DB.Query("SELECT * from library;")
 	if err != nil {
-		log.Printf("error reading database %v", err)
+		log.Printf("error querying database %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -167,7 +165,7 @@ func handleGetAllBooks(w http.ResponseWriter, _ *http.Request) {
 	for rows.Next() {
 		b, err := rowToMetadata(rows)
 		if err != nil {
-			log.Printf("error reading database %v", err)
+			log.Printf("error reading rows %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -186,24 +184,23 @@ func handleGetAllBooks(w http.ResponseWriter, _ *http.Request) {
 
 // Handler for getting a specific book at /books/{bookID}
 func handleGetBook(w http.ResponseWriter, r *http.Request) {
-	bookID, err := strconv.Atoi(chi.URLParam(r, "bookID"))
+	id := chi.URLParam(r, "id")
+	row, err := db.DB.Query("SELECT * FROM library WHERE id=$1;", id)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("error parsing %d from string to integer %v", bookID, err)
-		return
-	}
-
-	row, err := db.DB.Query("SELECT * FROM library WHERE id=$1;", bookID)
-	if err != nil {
-		log.Printf("error reading database %v", err)
+		log.Printf("error querying database %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	row.Next()
+	if !row.Next() {
+		log.Printf("error row not found")
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
 	book, err := rowToMetadata(row)
 	if err != nil {
-		log.Printf("error reading database %v", err)
+		log.Printf("error reading rows %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -221,18 +218,13 @@ func handleGetBook(w http.ResponseWriter, r *http.Request) {
 // Handler for getting a specific book.
 func handleDeleteBook(w http.ResponseWriter, r *http.Request) {
 	// Grab ID from the URL, which is /todo/{todoID}
-	bookID, err := strconv.Atoi(chi.URLParam(r, "bookID"))
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("error parsing %d from string to integer %v", bookID, err)
-		return
-	}
+	id := chi.URLParam(r, "id")
 
 	// SQL query to delete a row.
 	sqlStatement := `
 	DELETE FROM library
 	WHERE id = $1;`
-	res, err := db.DB.Exec(sqlStatement, bookID)
+	res, err := db.DB.Exec(sqlStatement, id)
 	if err != nil {
 		panic(err)
 	}

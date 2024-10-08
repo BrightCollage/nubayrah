@@ -1,5 +1,5 @@
 CREATE TABLE library (
-    id integer PRIMARY KEY,
+    id text PRIMARY KEY,
     filepath text NOT NULL,
     title text NOT NULL,
     titleSort text,
@@ -15,5 +15,5 @@ CREATE TABLE library (
     rights text,
     contributors text,
     description text,
-    uid test
+    uid text
 );

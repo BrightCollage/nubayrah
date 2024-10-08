@@ -1,8 +1,6 @@
-package main
+package book
 
 import (
-	"fmt"
-	"log"
 	"net/http"
 	"os"
 
@@ -11,7 +9,7 @@ import (
 	"github.com/go-chi/cors"
 )
 
-func NewServer() error {
+func NewRouter() chi.Router {
 
 	// Create multiplexer/router for the server
 	r := chi.NewRouter()
@@ -44,12 +42,10 @@ func NewServer() error {
 
 	r.Get("/books", handleGetAllBooks)
 
-	r.Get("/books/{bookID}", handleGetBook)
+	r.Get("/books/{id}", handleGetBook)
 
-	r.Delete("/books/{bookID}", handleDeleteBook)
+	r.Delete("/books/{id}", handleDeleteBook)
 
-	addr := fmt.Sprintf("%s:%d", userConfig.Host, userConfig.Port)
-	log.Printf("Listening at %s", addr)
-	return http.ListenAndServe(addr, r)
+	return r
 
 }
