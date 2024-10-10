@@ -19,6 +19,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// TODO: Fix configurations for this file.
 const libararyRoot = "library/"
 
 // Handler for importing an epub
