@@ -26,3 +26,6 @@ go.work.sum
 
 # Ignore generated .data/ file that is hosting postgresql data
 .data
+
+# local ide files
+.vscode/*

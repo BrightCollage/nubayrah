@@ -30,7 +30,7 @@ func NewRouter() chi.Router {
 	r.Use(middleware.Logger)
 
 	r.Get("/", func(w http.ResponseWriter, _ *http.Request) {
-		index, err := os.ReadFile("../static/index.html")
+		index, err := os.ReadFile("../../static/index.html")
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
