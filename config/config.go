@@ -1,13 +1,11 @@
 package config
 
 import (
-	"encoding/json"
-	"errors"
-	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
-	"strconv"
+
+	"github.com/spf13/viper"
 )
 
 type Configuration struct {
@@ -18,76 +16,58 @@ type Configuration struct {
 	HomeDirectory string
 }
 
-func New() (*Configuration, error) {
-	return OpenConfig()
-}
+func New() Configuration {
 
-// Reads user config from ~/.nubayrah
-// If this file does not exist a new default config is created there
-func OpenConfig() (*Configuration, error) {
-	home, err := os.UserHomeDir()
+	err := setDefaultConfig()
 	if err != nil {
-		panic(err)
+		log.Printf("Error when trying to get home directory: %v", err)
 	}
 
-	config := &Configuration{}
-
-	config.HomeDirectory = filepath.Join(home, ".nubayrah")
-	config.FilePath = filepath.Join(config.HomeDirectory, "config.json")
-
-	defer applyConfigEnvars(config)
-
-	log.Printf("Opening config at %s", config.FilePath)
-	configBytes, err := os.ReadFile(config.FilePath)
-	var perr *fs.PathError
-	if err == os.ErrNotExist || errors.As(err, &perr) {
-		log.Printf("Config file not found, generating new config")
-		return createNewDefaultConfig(config)
-	}
-
-	err = json.Unmarshal(configBytes, config)
-	if err != nil {
-		return config, err
-	}
-
-	return config, err
-}
-
-func applyConfigEnvars(config *Configuration) {
-	port := os.Getenv("PORT")
-	if port != "" {
-		p, err := strconv.Atoi(port)
-		if err == nil {
-			config.Port = p
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			// Config file not found
+			log.Printf("Configuration file not found, creating a new one at: ~ %v", viper.Get("file_path"))
+			if err = viper.SafeWriteConfig(); err != nil {
+				log.Printf("Error when writing config: %v", err)
+				panic(err)
+			}
+		} else {
+			// Config file found but error
+			panic(err)
 		}
 	}
 
-	host := os.Getenv("HOST")
-	if host != "" {
-		config.Host = host
+	log.Printf("Using configuration file %v", viper.Get("file_path"))
+
+	return Configuration{
+		LibraryRoot:   viper.GetString("library_root"),
+		Host:          viper.GetString("host"),
+		Port:          viper.GetInt("port"),
+		FilePath:      viper.GetString("file_path"),
+		HomeDirectory: viper.GetString("home_directory"),
 	}
 }
 
-// Creates default config and writes to file
-func createNewDefaultConfig(config *Configuration) (*Configuration, error) {
+// Sets Default values
+func setDefaultConfig() error {
 
-	config.LibraryRoot = filepath.Join(config.HomeDirectory, "library")
-	config.Host = "0.0.0.0"
-	config.Port = 5050
-
-	configBytes, err := json.Marshal(config)
+	home, err := os.UserHomeDir()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	err = os.MkdirAll(config.LibraryRoot, os.ModePerm)
-	if err != nil {
-		return nil, err
-	}
-	err = os.WriteFile(config.FilePath, configBytes, os.ModePerm)
-	if err != nil {
-		return nil, err
-	}
+	homeDir := filepath.Join(home, ".nubayrah")
 
-	return config, err
+	viper.SetDefault("library_path", filepath.Join(homeDir, "library"))
+	viper.SetDefault("file_path", filepath.Join(homeDir, "config.yaml"))
+	viper.SetDefault("host", "0.0.0.0")
+	viper.SetDefault("port", 5050)
+	viper.SetDefault("home_directory", homeDir)
+
+	viper.SetConfigName("config") // name of config file (without extension)
+	viper.SetConfigType("yaml")   // REQUIRED if the config file does not have the extension in the name
+
+	viper.AddConfigPath(homeDir) // path to look for the config file in
+
+	return nil
 }

@@ -20,7 +20,7 @@ func TestGetRootDoc(t *testing.T) {
 
 	assert.Nil(t, err)
 
-	b, err := epub.rootFile.WriteToString()
+	b, err := epub.RootFile.WriteToString()
 	assert.Nil(t, err)
 
 	assert.Equal(t, len(orig), len(b), "File content length mismatch. Want: %d Have: %d", len(orig), len(b))
@@ -120,7 +120,7 @@ func TestReadMetadata(t *testing.T) {
 		PubDate:   "2009-02-12",
 		Rights:    "Public domain in the USA.",
 		Contributors: []Contributor{
-			{name: "Constance Garnett", role: "trl"},
+			{Name: "Constance Garnett", Role: "trl"},
 		},
 		Description: "",
 		Uid:         "http://www.gutenberg.org/28054",
@@ -151,7 +151,7 @@ func TestReadMetadata(t *testing.T) {
 		PubDate:   "2009-12-31",
 		Rights:    "Public domain in the USA.",
 		Contributors: []Contributor{
-			{name: "calibre (7.12.0) [https://calibre-ebook.com]", role: "bkp"},
+			{Name: "calibre (7.12.0) [https://calibre-ebook.com]", Role: "bkp"},
 		},
 		Description: "",
 		Uid:         "http://www.gutenberg.org/30755",
@@ -192,7 +192,7 @@ func TestWriteMetadata(t *testing.T) {
 		PubDate:   "1999-12-31",
 		Rights:    "",
 		Contributors: []Contributor{
-			{name: "Bob Ross", role: "art"},
+			{Name: "Bob Ross", Role: "art"},
 		},
 		Description: "fakeMetadata",
 		Uid:         "notauid",

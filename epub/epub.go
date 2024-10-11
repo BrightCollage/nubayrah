@@ -26,7 +26,7 @@ type Epub struct {
 	Filepath   string
 	Metadata   *Metadata
 	fileHandle *zip.Reader
-	rootFile   *RootFile
+	RootFile   *RootFile
 	coverImage []byte
 }
 
@@ -93,7 +93,7 @@ func (e *Epub) Reload() error {
 		}
 	}
 
-	e.rootFile, err = e.getRootFile()
+	e.RootFile, err = e.getRootFile()
 	if err != nil {
 		return err
 	}
@@ -115,11 +115,7 @@ func (e *Epub) Close() {
 
 // Parse metadata from rootfile into e.Metadata
 func (e *Epub) readMetadata() error {
-	rf, err := e.getRootFile()
-	if err != nil {
-		return err
-	}
-	e.Metadata = ExtractMetadata(rf)
+	e.Metadata = e.ExtractMetadata()
 	return nil
 }
 
@@ -267,14 +263,14 @@ func (e *Epub) WriteChanges() error {
 	defer os.Remove(tmpDir)
 
 	// RootFile + Metadata
-	e.rootFile.InsertMetadata(e.Metadata)
-	rfStr, err := e.rootFile.WriteToString()
+	e.RootFile.InsertMetadata(e.Metadata)
+	rfStr, err := e.RootFile.WriteToString()
 	if err != nil {
 		return err
 	}
 	rfStr = xmlfmt.FormatXML(rfStr, "", "  ")
 
-	err = os.WriteFile(filepath.Join(tmpDir, e.rootFile.internalPath), []byte(rfStr), os.ModePerm)
+	err = os.WriteFile(filepath.Join(tmpDir, e.RootFile.internalPath), []byte(rfStr), os.ModePerm)
 	if err != nil {
 		return err
 	}
@@ -321,19 +317,19 @@ func (e *Epub) WriteChanges() error {
 
 // Returns internal path to cover image
 func (e *Epub) GetCoverPath() (string, error) {
-	coverId := e.rootFile.getCoverId()
+	coverId := e.RootFile.getCoverId()
 	if coverId == "" {
 		return "", fmt.Errorf("cover id not found in root doc")
 	}
 
-	itemElem := e.rootFile.FindElement(fmt.Sprintf("//package/manifest/item[@id='%s']", coverId))
+	itemElem := e.RootFile.FindElement(fmt.Sprintf("//package/manifest/item[@id='%s']", coverId))
 	if itemElem == nil {
 		return "", errors.New("cover image item not found in manifest")
 	}
 
 	imgRelativePath := itemElem.SelectAttrValue("href", "")
 
-	return filepath.Join(filepath.Dir(e.rootFile.internalPath), imgRelativePath), nil
+	return filepath.Join(filepath.Dir(e.RootFile.internalPath), imgRelativePath), nil
 }
 
 // Attempts to convert provided image data to required format before
