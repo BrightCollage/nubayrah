@@ -17,3 +17,10 @@ CREATE TABLE library (
     description text,
     uid text
 );
+
+CREATE TABLE dbmetadata (
+    id int PRIMARY KEY,
+    userVersion int
+);
+
+INSERT INTO dbmetadata (id, userVersion) VALUES (0, 0);
