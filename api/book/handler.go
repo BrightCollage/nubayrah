@@ -2,28 +2,36 @@ package book
 
 import (
 	"bytes"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"nubayrah/db"
 	"nubayrah/epub"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
+
+type API struct {
+	repository *Repository
+}
+
+func NewAPI(db *gorm.DB) *API {
+	return &API{
+		repository: NewRepository(db),
+	}
+}
 
 // TODO: Fix configurations for this file.
 const libararyRoot = "library/"
 
 // Handler for importing an epub
-func handleImportBook(w http.ResponseWriter, r *http.Request) {
+func (a *API) handleImportBook(w http.ResponseWriter, r *http.Request) {
 	// Read file contents from request
 	file, _, err := r.FormFile("epub")
 	if err != nil {
@@ -51,14 +59,14 @@ func handleImportBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	epub, err := epub.OpenEpubBytes(data)
+	epubObj, err := epub.OpenEpubBytes(data)
 	if err != nil {
 		w.WriteHeader(http.StatusUnsupportedMediaType)
 		log.Printf("error opening epub archive %v", err)
 	}
 
 	// Write epub to disk at library/author/title.epub
-	targetDir := filepath.Join(libararyRoot, epub.Metadata.Author)
+	targetDir := filepath.Join(libararyRoot, epubObj.Metadata.Author)
 	targetDir = sanitizeDirName(targetDir)
 
 	err = os.MkdirAll(targetDir, os.ModePerm)
@@ -68,7 +76,7 @@ func handleImportBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	targetFile := filepath.Join(targetDir, sanitizeFileName(epub.Metadata.Title)) + ".epub"
+	targetFile := filepath.Join(targetDir, sanitizeFileName(epubObj.Metadata.Title)) + ".epub"
 	// If a file exists with the desired name, start incrementing as filename_1
 	// until an unused filename is found
 	if fileExists(targetFile) {
@@ -88,89 +96,59 @@ func handleImportBook(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	epub.Filepath = targetFile
+	epubObj.Filepath = targetFile
 	err = os.WriteFile(targetFile, data, os.ModePerm)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Printf("error writing epub file to disk %v", err)
 	}
 
-	// Extract cover image to library/author/{covername}.ext
-	coverFilepath, err := epub.ExtractCoverImage(targetDir)
+	book, err := a.repository.Create(&Book{
+		Metadata: *epubObj.ExtractMetadata(),
+		ID:       uuid.New(),
+		Filepath: targetDir,
+	})
 	if err != nil {
-		log.Printf("error extracting cover image %v", err)
-	}
-
-	// Insert into db
-	subjects, err := json.Marshal(epub.Metadata.Subjects)
-	if err != nil {
-		subjects = []byte{}
-	}
-
-	contribs, err := json.Marshal(epub.Metadata.Contributors)
-	if err != nil {
-		contribs = []byte{}
-	}
-
-	insertQ := `INSERT INTO library
-	(id,  filepath, title, titleSort, author, authorSort, language, series, seriesNum, subjects, isbn, publisher, pubDate, rights, contributors, description, uid) VALUES
-	($1,   $2,        $3,     $4,         $5,       $6,     $7,        $8,       $9,  $10,       $11,     $12,    $13,          $14,         $15, $16, $17)`
-	res, err := db.DB.Exec(insertQ,
-		uuid.New(),
-		epub.Filepath,
-		epub.Metadata.Title,
-		epub.Metadata.TitleSort,
-		epub.Metadata.Author,
-		epub.Metadata.AuthorSort,
-		epub.Metadata.Language,
-		epub.Metadata.Series,
-		strconv.FormatFloat(epub.Metadata.SeriesNum, 'f', 2, 64),
-		string(subjects),
-		epub.Metadata.Isbn,
-		epub.Metadata.Publisher,
-		epub.Metadata.PubDate,
-		epub.Metadata.Rights,
-		string(contribs),
-		epub.Metadata.Description,
-		epub.Metadata.Uid)
-	if err != nil {
+		log.Printf("error writing books into database %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("error when querying to DB %v", err)
-		os.Remove(coverFilepath)
-		os.Remove(epub.Filepath)
 		return
 	}
 
-	// Rename cover image to n.ext where n is the id for the new row in the db
-	n, _ := res.LastInsertId()
-	d, f := filepath.Split(coverFilepath)
-	ext := filepath.Ext(f)
-	err = os.Rename(coverFilepath, filepath.Join(d, strconv.FormatInt(n, 10)+ext))
+	j, err := json.Marshal(book)
 	if err != nil {
-		log.Printf("error renaming cover image %v", err)
+		log.Printf("error marshalling books into json %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
+	// Extract cover image to library/author/{covername}.ext
+	// coverFilepath, err := epub.ExtractCoverImage(targetDir)
+	// if err != nil {
+	// 	log.Printf("error extracting cover image %v", err)
+	// }
+
+	// // Rename cover image to n.ext where n is the id for the new row in the db
+	// n, _ := res.LastInsertId()
+	// d, f := filepath.Split(coverFilepath)
+	// ext := filepath.Ext(f)
+	// err = os.Rename(coverFilepath, filepath.Join(d, strconv.FormatInt(n, 10)+ext))
+	// if err != nil {
+	// 	log.Printf("error renaming cover image %v", err)
+	// }
+
 	w.WriteHeader(http.StatusCreated)
+	w.Write(j)
 }
 
 // Handler for root link /books
-func handleGetAllBooks(w http.ResponseWriter, _ *http.Request) {
-	rows, err := db.DB.Query("SELECT * from library;")
+func (a *API) handleGetAllBooks(w http.ResponseWriter, _ *http.Request) {
+
+	books, err := a.repository.List()
+
 	if err != nil {
-		log.Printf("error querying database %v", err)
+		log.Printf("error reading rows %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
-	}
-
-	books := []Book{}
-	for rows.Next() {
-		b, err := rowToMetadata(rows)
-		if err != nil {
-			log.Printf("error reading rows %v", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		books = append(books, *b)
 	}
 
 	j, err := json.Marshal(books)
@@ -184,28 +162,20 @@ func handleGetAllBooks(w http.ResponseWriter, _ *http.Request) {
 }
 
 // Handler for getting a specific book at /books/{bookID}
-func handleGetBook(w http.ResponseWriter, r *http.Request) {
+func (a *API) handleGetBook(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	row, err := db.DB.Query("SELECT * FROM library WHERE id=$1;", id)
+	UUID, err := uuid.Parse(id)
 	if err != nil {
-		log.Printf("error querying database %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if !row.Next() {
-		log.Printf("error row not found")
+		log.Printf("error parsing uuid from url: %v", err)
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-
-	book, err := rowToMetadata(row)
+	book, err := a.repository.Read(UUID)
 	if err != nil {
-		log.Printf("error reading rows %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("error finding book in db: %v", err)
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-
 	j, err := json.Marshal(book)
 	if err != nil {
 		log.Printf("error marshalling books into json %v", err)
@@ -217,61 +187,61 @@ func handleGetBook(w http.ResponseWriter, r *http.Request) {
 }
 
 // Handler for getting a specific book.
-func handleDeleteBook(w http.ResponseWriter, r *http.Request) {
+func (a *API) handleDeleteBook(w http.ResponseWriter, r *http.Request) {
 	// Grab ID from the URL, which is /todo/{todoID}
 	id := chi.URLParam(r, "id")
-
-	// SQL query to delete a row.
-	sqlStatement := `
-	DELETE FROM library
-	WHERE id = $1;`
-	res, err := db.DB.Exec(sqlStatement, id)
+	UUID, err := uuid.Parse(id)
 	if err != nil {
-		panic(err)
+		log.Printf("error when parsing UUID from url: %v", err)
+		w.WriteHeader(http.StatusNotFound)
+		return
 	}
-	count, err := res.RowsAffected()
+
+	count, err := a.repository.Delete(UUID)
 	if err != nil {
-		panic(err)
+		log.Printf("error when deleting UUID from DB: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	log.Printf("Count deleted: %v", count)
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Scan and parse database row into book
-// Some fields (eg any array) cannot be stored directly in the db and are
-// encoded/decoded as json
-func rowToMetadata(row *sql.Rows) (*Book, error) {
-	b := &Book{}
+// // Scan and parse database row into book
+// // Some fields (eg any array) cannot be stored directly in the db and are
+// // encoded/decoded as json
+// func rowToMetadata(row *sql.Rows) (*Book, error) {
+// 	b := &Book{}
 
-	var subjects string
-	var contribs string
+// 	var subjects string
+// 	var contribs string
 
-	err := row.Scan(
-		&b.ID,
-		&b.Filepath,
-		&b.Metadata.Title,
-		&b.Metadata.TitleSort,
-		&b.Metadata.Author,
-		&b.Metadata.AuthorSort,
-		&b.Metadata.Language,
-		&b.Metadata.Series,
-		&b.Metadata.SeriesNum,
-		&subjects,
-		&b.Metadata.Isbn,
-		&b.Metadata.Publisher,
-		&b.Metadata.PubDate,
-		&b.Metadata.Rights,
-		&contribs,
-		&b.Metadata.Description,
-		&b.Metadata.Uid,
-	)
-	if err != nil {
-		return nil, err
-	}
+// 	err := row.Scan(
+// 		&b.ID,
+// 		&b.Filepath,
+// 		&b.Metadata.Title,
+// 		&b.Metadata.TitleSort,
+// 		&b.Metadata.Author,
+// 		&b.Metadata.AuthorSort,
+// 		&b.Metadata.Language,
+// 		&b.Metadata.Series,
+// 		&b.Metadata.SeriesNum,
+// 		&subjects,
+// 		&b.Metadata.Isbn,
+// 		&b.Metadata.Publisher,
+// 		&b.Metadata.PubDate,
+// 		&b.Metadata.Rights,
+// 		&contribs,
+// 		&b.Metadata.Description,
+// 		&b.Metadata.Uid,
+// 	)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	json.Unmarshal([]byte(subjects), &b.Subjects)
-	json.Unmarshal([]byte(contribs), &b.Contributors)
+// 	json.Unmarshal([]byte(subjects), &b.Subjects)
+// 	json.Unmarshal([]byte(contribs), &b.Contributors)
 
-	return b, nil
-}
+// 	return b, nil
+// }

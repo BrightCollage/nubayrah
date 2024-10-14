@@ -7,9 +7,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"gorm.io/gorm"
 )
 
-func NewRouter() chi.Router {
+func NewRouter(db *gorm.DB) chi.Router {
 
 	// Create multiplexer/router for the server
 	r := chi.NewRouter()
@@ -38,13 +39,15 @@ func NewRouter() chi.Router {
 		w.Write(index)
 	})
 
-	r.Post("/books", handleImportBook)
+	bookAPI := NewAPI(db)
 
-	r.Get("/books", handleGetAllBooks)
+	r.Post("/books", bookAPI.handleImportBook)
 
-	r.Get("/books/{id}", handleGetBook)
+	r.Get("/books", bookAPI.handleGetAllBooks)
 
-	r.Delete("/books/{id}", handleDeleteBook)
+	r.Get("/books/{id}", bookAPI.handleGetBook)
+
+	r.Delete("/books/{id}", bookAPI.handleDeleteBook)
 
 	return r
 

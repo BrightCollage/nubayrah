@@ -1,9 +1,15 @@
 package book
 
-import "nubayrah/epub"
+import (
+	"nubayrah/epub"
+
+	"github.com/google/uuid"
+)
 
 type Book struct {
+	ID uuid.UUID `json:"id"`
 	epub.Metadata
-	ID       string `json:"id"`
-	Filepath string
+	Filepath string `json:"filePath"`
 }
+
+type Books []*Book

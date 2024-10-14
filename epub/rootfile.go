@@ -21,22 +21,22 @@ type RootFile struct {
 }
 
 // Parses metadata from root-file xml document
-func ExtractMetadata(doc *RootFile) *Metadata {
+func (e *Epub) ExtractMetadata() *Metadata {
 	mdata := &Metadata{}
 
-	mdata.Title, mdata.TitleSort = doc.getTitle()
-	mdata.Author, mdata.AuthorSort = doc.getAuthor()
-	mdata.Language = doc.getLanguage()
-	mdata.Series, mdata.SeriesNum = doc.getSeries()
-	mdata.Subjects = doc.getSubjects()
-	mdata.Isbn = doc.getISBN()
-	mdata.Publisher = doc.getPublisher()
-	mdata.PubDate = doc.getPubDate()
-	mdata.Rights = doc.getRights()
-	mdata.Contributors = doc.getContributors()
-	mdata.Description = doc.getDescription()
+	mdata.Title, mdata.TitleSort = e.RootFile.getTitle()
+	mdata.Author, mdata.AuthorSort = e.RootFile.getAuthor()
+	mdata.Language = e.RootFile.getLanguage()
+	mdata.Series, mdata.SeriesNum = e.RootFile.getSeries()
+	mdata.Subjects = e.RootFile.getSubjects()
+	mdata.Isbn = e.RootFile.getISBN()
+	mdata.Publisher = e.RootFile.getPublisher()
+	mdata.PubDate = e.RootFile.getPubDate()
+	mdata.Rights = e.RootFile.getRights()
+	mdata.Contributors = e.RootFile.getContributors()
+	mdata.Description = e.RootFile.getDescription()
 
-	mdata.Uid = doc.getUID()
+	mdata.Uid = e.RootFile.getUID()
 
 	return mdata
 }
@@ -124,11 +124,11 @@ func (f *RootFile) InsertMetadata(mdata *Metadata) error {
 		id := fmt.Sprintf("contributor_%d", i)
 		contElem := mdataElem.CreateElement("dc:contributor")
 		contElem.CreateAttr("id", id)
-		contElem.SetText(c.name)
+		contElem.SetText(c.Name)
 		metaElem := mdataElem.CreateElement("meta")
 		metaElem.CreateAttr("refines", fmt.Sprintf("#%s", id))
 		metaElem.CreateAttr("property", "role")
-		metaElem.SetText(c.role)
+		metaElem.SetText(c.Role)
 	}
 
 	if mdata.Description != "" {
@@ -286,9 +286,9 @@ func (f *RootFile) getContributors() []Contributor {
 	contribs := f.FindElements("//contributor")
 	contributors := make([]Contributor, len(contribs))
 	for i, c := range contribs {
-		contributors[i].name = c.Text()
+		contributors[i].Name = c.Text()
 		if r := c.SelectAttrValue("opf:role", ""); r != "" {
-			contributors[i].role = r
+			contributors[i].Role = r
 			continue
 		}
 		id := c.SelectAttrValue("id", "")
@@ -307,7 +307,7 @@ func (f *RootFile) getContributors() []Contributor {
 			})
 
 		if metaElem != nil {
-			contributors[i].role = metaElem.Text()
+			contributors[i].Role = metaElem.Text()
 		}
 
 	}

@@ -14,13 +14,10 @@ import (
 func main() {
 	log.Printf("Starting Nubayrah Server")
 
-	userConfig, err := config.OpenConfig()
-	if err != nil {
-		log.Printf("error when opening Config %v", err)
-		panic(err)
-	}
+	userConfig := config.New()
+
 	// Start with connecting to the Database
-	err = db.OpenDatabase()
+	DB, err := db.OpenDatabase()
 	if err != nil {
 		log.Printf("error when connecting to database %v", err)
 		panic(err)
@@ -28,14 +25,14 @@ func main() {
 	defer db.CloseDatabase()
 
 	// Started HTTPServer
-	err = NewServer(book.NewRouter(), userConfig)
+	err = NewServer(book.NewRouter(DB), userConfig)
 	if err != nil {
 		log.Printf("Error when trying to instantiate server %v", err)
 	}
 
 }
 
-func NewServer(r chi.Router, config *config.Configuration) error {
+func NewServer(r chi.Router, config config.Configuration) error {
 
 	addr := fmt.Sprintf("%s:%d", config.Host, config.Port)
 	log.Printf("Listening at %s", addr)
