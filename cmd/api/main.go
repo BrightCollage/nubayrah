@@ -17,7 +17,7 @@ func main() {
 	userConfig := config.New()
 
 	// Start with connecting to the Database
-	DB, err := db.OpenDatabase()
+	DB, err := db.OpenSQLDatabase(userConfig)
 	if err != nil {
 		log.Printf("error when connecting to database %v", err)
 		panic(err)
