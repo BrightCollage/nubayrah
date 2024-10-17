@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func OpenSQLDatabase(config config.Configuration) (*gorm.DB, error) {
+func OpenDatabase(config config.Configuration) (*gorm.DB, error) {
 
 	// Use stdlib to open a connection to postgres db.
 	db_path := filepath.Join(config.HomeDirectory, "nubayrah.db")
