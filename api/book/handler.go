@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	config "github.com/spf13/viper"
 	"gorm.io/gorm"
 )
 
@@ -26,9 +27,6 @@ func NewAPI(db *gorm.DB) *API {
 		repository: NewRepository(db),
 	}
 }
-
-// TODO: Fix configurations for this file.
-const libararyRoot = "library/"
 
 // Handler for importing an epub
 func (a *API) handleImportBook(w http.ResponseWriter, r *http.Request) {
@@ -66,7 +64,7 @@ func (a *API) handleImportBook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Write epub to disk at library/author/title.epub
-	targetDir := filepath.Join(libararyRoot, epubObj.Metadata.Author)
+	targetDir := filepath.Join(config.GetString("library_path"), epubObj.Metadata.Author)
 	targetDir = sanitizeDirName(targetDir)
 
 	err = os.MkdirAll(targetDir, os.ModePerm)

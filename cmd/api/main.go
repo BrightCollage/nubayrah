@@ -17,12 +17,11 @@ func main() {
 	userConfig := config.New()
 
 	// Start with connecting to the Database
-	DB, err := db.OpenDatabase()
+	DB, err := db.OpenDatabase(userConfig)
 	if err != nil {
 		log.Printf("error when connecting to database %v", err)
 		panic(err)
 	}
-	defer db.CloseDatabase()
 
 	// Started HTTPServer
 	err = NewServer(book.NewRouter(DB), userConfig)
