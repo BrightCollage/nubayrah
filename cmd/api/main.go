@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"nubayrah/api/book"
+	"nubayrah/api/router"
 	"nubayrah/config"
 	"nubayrah/db"
 
@@ -28,7 +28,7 @@ func main() {
 	}
 
 	// Started HTTPServer
-	err = NewServer(book.NewRouter(DB))
+	err = NewServer(router.New(DB))
 	if err != nil {
 		log.Printf("Error when trying to instantiate server %v", err)
 	}

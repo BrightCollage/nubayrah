@@ -1,7 +1,9 @@
-package book
+package router
 
 import (
 	"net/http"
+	"nubayrah/api/book"
+	middlewares "nubayrah/api/router/middleware"
 	"os"
 
 	"github.com/go-chi/chi/v5"
@@ -10,7 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func NewRouter(db *gorm.DB) chi.Router {
+func New(db *gorm.DB) chi.Router {
 
 	// Create multiplexer/router for the server
 	r := chi.NewRouter()
@@ -39,22 +41,39 @@ func NewRouter(db *gorm.DB) chi.Router {
 		w.Write(index)
 	})
 
-	bookAPI := NewAPI(db)
+	bookAPI := book.NewAPI(db)
 
+	// Book object routes
 	r.Route("/books", func(r chi.Router) {
 
-		r.Post("/", bookAPI.handleImportBook)
+		r.Use(middlewares.ContentTypeJSON)
 
-		r.Get("/", bookAPI.handleGetAllBooks)
+		// Book -> Create()
+		r.Post("/", bookAPI.HandleImportBook)
 
+		// Book -> List()
+		r.Get("/", bookAPI.HandleGetAllBooks)
+
+		// Book with object key
 		r.Route("/{id}", func(r chi.Router) {
 
-			r.Get("/", bookAPI.handleGetBook)
+			//  Book -> Read()
+			r.Get("/", bookAPI.HandleGetBook)
 
-			r.Delete("/", bookAPI.handleDeleteBook)
+			// Book -> Delete()
+			r.Delete("/", bookAPI.HandleDeleteBook)
 
-			r.Get("/cover", bookAPI.handleGetBookCover)
+			r.Route("/cover", func(r chi.Router) {
+
+				// GetCoverImage() returns type PNG
+				r.Use(middlewares.ContentTypePNG)
+
+				//  Book -> GetCoverImage()
+				r.Get("/", bookAPI.HandleGetBookCover)
+			})
+
 		})
+
 	})
 
 	return r
