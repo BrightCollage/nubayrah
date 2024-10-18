@@ -3,19 +3,18 @@ package db
 import (
 	"log"
 	"nubayrah/api/book"
-	"nubayrah/config"
 	"path/filepath"
 
+	config "github.com/spf13/viper"
 	"gorm.io/driver/sqlite"
 
 	"gorm.io/gorm"
 )
 
-func OpenDatabase(config config.Configuration) (*gorm.DB, error) {
+func OpenDatabase() (*gorm.DB, error) {
 
 	// Use stdlib to open a connection to postgres db.
-	db_path := filepath.Join(config.HomeDirectory, "nubayrah.db")
-
+	db_path := filepath.Join(config.GetString("db_path"))
 	log.Printf("Using databse from: %v", db_path)
 	DB, err := gorm.Open(sqlite.Open(db_path), &gorm.Config{})
 

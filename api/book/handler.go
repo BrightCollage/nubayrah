@@ -1,20 +1,14 @@
 package book
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"nubayrah/epub"
-	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	config "github.com/spf13/viper"
 	"gorm.io/gorm"
 )
 
@@ -37,74 +31,18 @@ func (a *API) handleImportBook(w http.ResponseWriter, r *http.Request) {
 		log.Printf("error reading file from post requiest %v", err)
 		return
 	}
+	defer file.Close()
 
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, file)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("error copying file data %v", err)
-		return
-	}
-
-	data := buf.Bytes()
-
-	// Validate first by checking magic bytes, then attempting to parse the epub's metadata
-	var magic [4]byte
-	copy(magic[:], data[:4])
-	if !epub.CheckMagic(magic) {
-		w.WriteHeader(http.StatusUnsupportedMediaType)
-		log.Printf("magic bytes invalid for uploaded epub: %v", magic)
-		return
-	}
-
-	epubObj, err := epub.OpenEpubBytes(data)
+	epubObj, err := epub.Import(file)
 	if err != nil {
 		w.WriteHeader(http.StatusUnsupportedMediaType)
 		log.Printf("error opening epub archive %v", err)
 	}
 
-	// Write epub to disk at library/author/title.epub
-	targetDir := filepath.Join(config.GetString("library_path"), epubObj.Metadata.Author)
-	targetDir = sanitizeDirName(targetDir)
-
-	err = os.MkdirAll(targetDir, os.ModePerm)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("cannot create directories %v", err)
-		return
-	}
-
-	targetFile := filepath.Join(targetDir, sanitizeFileName(epubObj.Metadata.Title)) + ".epub"
-	// If a file exists with the desired name, start incrementing as filename_1
-	// until an unused filename is found
-	if fileExists(targetFile) {
-		k := strings.LastIndex(targetFile, ".")
-		targetFile = targetFile[:k] + "_%d" + ".epub"
-		for i := 1; i < 256; i++ {
-			numberedTarget := fmt.Sprintf(targetFile, i)
-			if !fileExists(numberedTarget) {
-				targetFile = numberedTarget
-				break
-			}
-			if i == 255 {
-				w.WriteHeader(http.StatusInternalServerError)
-				log.Printf("unable to find unused filename for %v", targetFile)
-				return
-			}
-		}
-	}
-
-	epubObj.Filepath = targetFile
-	err = os.WriteFile(targetFile, data, os.ModePerm)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Printf("error writing epub file to disk %v", err)
-	}
-
 	book, err := a.repository.Create(&Book{
 		Metadata: *epubObj.ExtractMetadata(),
 		ID:       uuid.New(),
-		Filepath: targetDir,
+		Filepath: epubObj.FilePath,
 	})
 	if err != nil {
 		log.Printf("error writing books into database %v", err)
@@ -118,21 +56,6 @@ func (a *API) handleImportBook(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
-	// Extract cover image to library/author/{covername}.ext
-	// coverFilepath, err := epub.ExtractCoverImage(targetDir)
-	// if err != nil {
-	// 	log.Printf("error extracting cover image %v", err)
-	// }
-
-	// // Rename cover image to n.ext where n is the id for the new row in the db
-	// n, _ := res.LastInsertId()
-	// d, f := filepath.Split(coverFilepath)
-	// ext := filepath.Ext(f)
-	// err = os.Rename(coverFilepath, filepath.Join(d, strconv.FormatInt(n, 10)+ext))
-	// if err != nil {
-	// 	log.Printf("error renaming cover image %v", err)
-	// }
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write(j)
@@ -184,7 +107,61 @@ func (a *API) handleGetBook(w http.ResponseWriter, r *http.Request) {
 	w.Write(j)
 }
 
-// Handler for getting a specific book.
+// Handler for getting a specific book at /books/{bookID}
+func (a *API) handleGetBookCover(w http.ResponseWriter, r *http.Request) {
+
+	// Grab UUID from url
+	id := chi.URLParam(r, "id")
+	UUID, err := uuid.Parse(id)
+	if err != nil {
+		log.Printf("error parsing uuid from url: %v", err)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	// Read item from database
+	book, err := a.repository.Read(UUID)
+	if err != nil {
+		log.Printf("error finding book in db: %v", err)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	// Get the filePath for the item
+	e, err := epub.OpenEpub(book.Filepath)
+	if err != nil {
+		log.Printf("error parsing path for item %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// Get CoverFile file object
+	file, err := e.GetCoverFile()
+	if err != nil {
+		log.Printf("error creating file object for item %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// Open a io.Reader for the object
+	fileReader, err := file.Open()
+	if err != nil {
+		log.Printf("error creating reader for object %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// Copies content of the file to the response writer
+	_, err = io.Copy(w, fileReader)
+	if err != nil {
+		log.Printf("error copying content to response %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+}
+
+// Handler for Deleting a specific book.
 func (a *API) handleDeleteBook(w http.ResponseWriter, r *http.Request) {
 	// Grab ID from the URL, which is /todo/{todoID}
 	id := chi.URLParam(r, "id")

@@ -7,7 +7,7 @@ import (
 )
 
 type Book struct {
-	ID uuid.UUID `json:"id"`
+	ID uuid.UUID `json:"id" gorm:"<-:create"`
 	epub.Metadata
 	Filepath string `json:"filePath"`
 }

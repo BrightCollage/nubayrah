@@ -41,13 +41,21 @@ func NewRouter(db *gorm.DB) chi.Router {
 
 	bookAPI := NewAPI(db)
 
-	r.Post("/books", bookAPI.handleImportBook)
+	r.Route("/books", func(r chi.Router) {
 
-	r.Get("/books", bookAPI.handleGetAllBooks)
+		r.Post("/", bookAPI.handleImportBook)
 
-	r.Get("/books/{id}", bookAPI.handleGetBook)
+		r.Get("/", bookAPI.handleGetAllBooks)
 
-	r.Delete("/books/{id}", bookAPI.handleDeleteBook)
+		r.Route("/{id}", func(r chi.Router) {
+
+			r.Get("/", bookAPI.handleGetBook)
+
+			r.Delete("/", bookAPI.handleDeleteBook)
+
+			r.Get("/cover", bookAPI.handleGetBookCover)
+		})
+	})
 
 	return r
 
