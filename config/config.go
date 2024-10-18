@@ -57,7 +57,8 @@ func setDefaultConfig() error {
 	viper.SetConfigName("config") // name of config file (without extension)
 	viper.SetConfigType("yaml")   // REQUIRED if the config file does not have the extension in the name
 
-	viper.AddConfigPath(homeDir) // path to look for the config file in
+	viper.AddConfigPath(homeDir)   // path to look for the config file in
+	viper.AddConfigPath("/config") // path to look for the config file in
 
 	return nil
 }

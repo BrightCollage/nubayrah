@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM golang:1.23-alpine as build
+FROM golang as build
 
 WORKDIR /src
 
@@ -11,9 +11,11 @@ RUN go mod download
 # https://docs.docker.com/reference/dockerfile/#copy
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/nubayrah ./cmd/api/main.go
+# Required for sqlite to work
+RUN CGO_ENABLED=1 GOOS=linux go build -o /bin/nubayrah ./cmd/api/main.go
 
-FROM scratch
+# Must use image that contains dynamic linking in order to copy files to /bin
+FROM debian:bookworm
 
 EXPOSE 5050
 COPY --from=build /bin/nubayrah /
