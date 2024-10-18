@@ -23,3 +23,5 @@ The default path for database storage is `./.data/`. Please change this if neede
 `POST /books` Sends a json body and creates the entry inside of DB.
 
 `DELETE /books/{id}` Deletes entry by id in database.
+
+`GET /books/{id}/cover` Returns image of specified item.
