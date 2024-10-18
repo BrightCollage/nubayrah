@@ -2,31 +2,41 @@ package epub
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetRootDoc(t *testing.T) {
 
 	orig, err := os.ReadFile("test_data/MobyDickContent.opf")
-	assert.Nil(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	t.Log("Opening MobyDick.epub")
 	fp := "test_data/MobyDick.epub"
 
 	epub, err := OpenEpub(fp)
-	assert.Nil(t, err)
-
-	assert.Nil(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	b, err := epub.RootFile.WriteToString()
-	assert.Nil(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	assert.Equal(t, len(orig), len(b), "File content length mismatch. Want: %d Have: %d", len(orig), len(b))
+	if len(orig) != len(b) {
+		t.Fatalf("File content length mismatch. Want: %d Have: %d", len(orig), len(b))
+	}
 
 	for i, a := range orig {
-		assert.Equal(t, a, b[i], "File content mismatch at position %d", i)
+		if a != b[i] {
+			t.Fatalf("File content mismatch at position %d", i)
+		}
 	}
 }
 
@@ -67,7 +77,9 @@ func TestReadMetadata(t *testing.T) {
 		Uid:          "http://www.gutenberg.org/2701",
 	}
 
-	assert.Equal(t, mdataWant, epub.Metadata)
+	if !assert.Equal(t, mdataWant, epub.Metadata) {
+		t.Fatal()
+	}
 
 	// Test The Stone Age
 	fp = "test_data/TheStoneAgeInNorthAmericaVol2.epub"
@@ -75,6 +87,7 @@ func TestReadMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	mdataWant = &Metadata{
 		Title:        "The stone age in North America, vol. II",
 		TitleSort:    "",
@@ -92,7 +105,9 @@ func TestReadMetadata(t *testing.T) {
 		Description:  "",
 		Uid:          "http://www.gutenberg.org/74390",
 	}
-	assert.Equal(t, mdataWant, epub.Metadata)
+	if !assert.Equal(t, mdataWant, epub.Metadata) {
+		t.Fatal()
+	}
 
 	// Test The Brothers Karamazov
 	fp = "test_data/TheBrothersKaramazov.epub"
@@ -126,7 +141,9 @@ func TestReadMetadata(t *testing.T) {
 		Uid:         "http://www.gutenberg.org/28054",
 	}
 
-	assert.Equal(t, mdataWant, epub.Metadata)
+	if !assert.Equal(t, mdataWant, epub.Metadata) {
+		t.Fatal()
+	}
 
 	// Test The Stones of Venice
 	fp = "test_data/TheStonesOfVeniceVol2.epub"
@@ -157,17 +174,24 @@ func TestReadMetadata(t *testing.T) {
 		Uid:         "http://www.gutenberg.org/30755",
 	}
 
-	assert.Equal(t, mdataWant, epub.Metadata)
+	if !assert.Equal(t, mdataWant, epub.Metadata) {
+		t.Fatal()
+	}
 }
 
 func TestWriteMetadata(t *testing.T) {
 	tmpFp := "test_data/TestEpub.epub"
 
 	og, err := os.ReadFile("test_data/TheBrothersKaramazov.epub")
-	assert.Nil(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	err = os.WriteFile(tmpFp, og, os.ModePerm)
-	assert.Nil(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	defer os.Remove(tmpFp)
 
 	epub, err := OpenEpub(tmpFp)
@@ -201,7 +225,9 @@ func TestWriteMetadata(t *testing.T) {
 	epub.Metadata = newMetadata
 
 	err = epub.WriteChanges()
-	assert.Nil(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	epub.Close()
 
@@ -211,17 +237,23 @@ func TestWriteMetadata(t *testing.T) {
 	}
 	defer epub.Close()
 
-	assert.Equal(t, newMetadata, epub.Metadata)
+	if !assert.Equal(t, newMetadata, epub.Metadata) {
+		t.Fatal()
+	}
 }
 
 func TestWriteCoverImage(t *testing.T) {
 	tmpFp := "test_data/TestEpub.epub"
 
 	og, err := os.ReadFile("test_data/TheBrothersKaramazov.epub")
-	assert.Nil(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	err = os.WriteFile(tmpFp, og, os.ModePerm)
-	assert.Nil(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer os.Remove(tmpFp)
 
 	epub, err := OpenEpub(tmpFp)
@@ -229,7 +261,7 @@ func TestWriteCoverImage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	newImage, err := os.ReadFile("test_data/coverImg.png")
+	newImage, err := os.ReadFile("test_data/miniCoverImg.png")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -269,5 +301,78 @@ func TestWriteCoverImage(t *testing.T) {
 	if len(cv) > 1000 {
 		t.Fatal()
 	}
+}
 
+func TestImport(t *testing.T) {
+	libRoot := filepath.Join("test_data", "test_library_root")
+	viper.SetDefault("library_path", libRoot)
+
+	file, err := os.Open("test_data/MobyDick.epub")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	e, err := Import(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fp := e.FilePath
+	if fp != filepath.Join(libRoot, "Herman Melville", "Moby Dick; Or, The Whale.epub") {
+		t.Fatalf("Imported book filepath is incorrect. Want: %s Have: %s", filepath.Join(libRoot, "Herman Melville", "Moby Dick.epub"), fp)
+	}
+
+	if _, err = os.Stat(fp); err != nil {
+		t.Fatal(err)
+	}
+
+	e.Close()
+	os.RemoveAll(libRoot)
+}
+
+// Tests importing a file that already exists in the filesystem
+func TestImportDuplicate(t *testing.T) {
+	libRoot := filepath.Join("test_data", "test_library_root")
+	viper.SetDefault("library_path", libRoot)
+
+	var e *Epub
+
+	t.Cleanup(func() {
+		if e != nil {
+			e.Close()
+		}
+		os.RemoveAll(libRoot)
+	})
+
+	// import once
+	file, err := os.Open("test_data/MobyDick.epub")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = Import(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	file.Close()
+
+	// import twice
+	file, err = os.Open("test_data/MobyDick.epub")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	e, err = Import(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fp := e.FilePath
+	if fp != filepath.Join(libRoot, "Herman Melville", "Moby Dick; Or, The Whale_1.epub") {
+		t.Fatalf("Imported book filepath is incorrect. Want: %s Have: %s", filepath.Join(libRoot, "Herman Melville", "Moby Dick.epub"), fp)
+	}
+
+	if _, err = os.Stat(fp); err != nil {
+		t.Fatal(err)
+	}
 }

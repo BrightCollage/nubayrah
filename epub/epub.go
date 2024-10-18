@@ -43,6 +43,7 @@ func OpenEpub(path string) (*Epub, error) {
 }
 
 // Opens and parses epub from multi-part file from request and then saves it to disk
+// at config.library_path/author/title.epub
 func Import(file multipart.File) (*Epub, error) {
 
 	// Create bytes buffer from file.
