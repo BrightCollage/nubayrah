@@ -15,7 +15,7 @@ import (
 func main() {
 	log.Printf("Starting Nubayrah Server")
 
-	err := config.GetConfig()
+	err := config.Load()
 	if err != nil {
 		panic(err)
 	}
