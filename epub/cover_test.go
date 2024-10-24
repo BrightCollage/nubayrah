@@ -7,20 +7,20 @@ import (
 
 func TestExtractCover(t *testing.T) {
 
-	origCover, err := os.ReadFile("test_data/origMobyDickCover.png")
+	origCover, err := os.ReadFile("../test_data/origMobyDickCover.png")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Log("Opening MobyDick.epub")
-	fp := "test_data/MobyDick.epub"
+	fp := "../test_data/MobyDick.epub"
 
 	epub, err := OpenEpub(fp)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	coverPath, err := epub.ExtractCoverImage("test_data")
+	coverPath, err := epub.ExtractCoverImage("../test_data")
 	defer os.Remove(coverPath)
 	if err != nil {
 		t.Fatal(err)
@@ -45,7 +45,7 @@ func TestExtractCover(t *testing.T) {
 func TestGetCoverFile(t *testing.T) {
 
 	t.Log("Opening MobyDick.epub")
-	fp := "test_data/MobyDick.epub"
+	fp := "../test_data/MobyDick.epub"
 
 	epub, err := OpenEpub(fp)
 	if err != nil {

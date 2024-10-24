@@ -11,13 +11,13 @@ import (
 
 func TestGetRootDoc(t *testing.T) {
 
-	orig, err := os.ReadFile("test_data/MobyDickContent.opf")
+	orig, err := os.ReadFile("../test_data/MobyDickContent.opf")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Log("Opening MobyDick.epub")
-	fp := "test_data/MobyDick.epub"
+	fp := "../test_data/MobyDick.epub"
 
 	epub, err := OpenEpub(fp)
 	if err != nil {
@@ -43,7 +43,7 @@ func TestGetRootDoc(t *testing.T) {
 func TestReadMetadata(t *testing.T) {
 
 	// Test MobyDick
-	fp := "test_data/MobyDick.epub"
+	fp := "../test_data/MobyDick.epub"
 	epub, err := OpenEpub(fp)
 	if err != nil {
 		t.Fatal(err)
@@ -82,7 +82,7 @@ func TestReadMetadata(t *testing.T) {
 	}
 
 	// Test The Stone Age
-	fp = "test_data/TheStoneAgeInNorthAmericaVol2.epub"
+	fp = "../test_data/TheStoneAgeInNorthAmericaVol2.epub"
 	epub, err = OpenEpub(fp)
 	if err != nil {
 		t.Fatal(err)
@@ -110,7 +110,7 @@ func TestReadMetadata(t *testing.T) {
 	}
 
 	// Test The Brothers Karamazov
-	fp = "test_data/TheBrothersKaramazov.epub"
+	fp = "../test_data/TheBrothersKaramazov.epub"
 	epub, err = OpenEpub(fp)
 	if err != nil {
 		t.Fatal(err)
@@ -146,7 +146,7 @@ func TestReadMetadata(t *testing.T) {
 	}
 
 	// Test The Stones of Venice
-	fp = "test_data/TheStonesOfVeniceVol2.epub"
+	fp = "../test_data/TheStonesOfVeniceVol2.epub"
 	epub, err = OpenEpub(fp)
 	if err != nil {
 		t.Fatal(err)
@@ -180,9 +180,9 @@ func TestReadMetadata(t *testing.T) {
 }
 
 func TestWriteMetadata(t *testing.T) {
-	tmpFp := "test_data/TestEpub.epub"
+	tmpFp := "../test_data/TestEpub.epub"
 
-	og, err := os.ReadFile("test_data/TheBrothersKaramazov.epub")
+	og, err := os.ReadFile("../test_data/TheBrothersKaramazov.epub")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,9 +243,9 @@ func TestWriteMetadata(t *testing.T) {
 }
 
 func TestWriteCoverImage(t *testing.T) {
-	tmpFp := "test_data/TestEpub.epub"
+	tmpFp := "../test_data/TestEpub.epub"
 
-	og, err := os.ReadFile("test_data/TheBrothersKaramazov.epub")
+	og, err := os.ReadFile("../test_data/TheBrothersKaramazov.epub")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,7 +261,7 @@ func TestWriteCoverImage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	newImage, err := os.ReadFile("test_data/miniCoverImg.png")
+	newImage, err := os.ReadFile("../test_data/miniCoverImg.png")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -304,10 +304,10 @@ func TestWriteCoverImage(t *testing.T) {
 }
 
 func TestImport(t *testing.T) {
-	libRoot := filepath.Join("test_data", "test_library_root")
+	libRoot := filepath.Join("../test_data", "test_library_root")
 	viper.SetDefault("library_path", libRoot)
 
-	file, err := os.Open("test_data/MobyDick.epub")
+	file, err := os.Open("../test_data/MobyDick.epub")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -332,7 +332,7 @@ func TestImport(t *testing.T) {
 
 // Tests importing a file that already exists in the filesystem
 func TestImportDuplicate(t *testing.T) {
-	libRoot := filepath.Join("test_data", "test_library_root")
+	libRoot := filepath.Join("../test_data", "test_library_root")
 	viper.SetDefault("library_path", libRoot)
 
 	var e *Epub
@@ -345,7 +345,7 @@ func TestImportDuplicate(t *testing.T) {
 	})
 
 	// import once
-	file, err := os.Open("test_data/MobyDick.epub")
+	file, err := os.Open("../test_data/MobyDick.epub")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -357,7 +357,7 @@ func TestImportDuplicate(t *testing.T) {
 	file.Close()
 
 	// import twice
-	file, err = os.Open("test_data/MobyDick.epub")
+	file, err = os.Open("../test_data/MobyDick.epub")
 	if err != nil {
 		t.Fatal(err)
 	}
