@@ -28,7 +28,7 @@ func (a *API) HandleImportBook(w http.ResponseWriter, r *http.Request) {
 	file, _, err := r.FormFile("epub")
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		log.Printf("error reading file from post requiest %v", err)
+		log.Printf("error reading file from post request %v", err)
 		return
 	}
 	defer file.Close()

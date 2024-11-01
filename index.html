@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nubayrah</title>
+</head>
+
+<body>
+    <h3>Import Book</h3>
+    <input id="fileImportBook" type="file" accept=".epub" /><br><br>
+    <button id="btnImportBook">Import</button>
+    <span id="progress"></span>
+    <span id="resp"></span>
+    <hr>
+</body>
+
+
+<script type="text/javascript">
+
+    document.addEventListener("DOMContentLoaded", () => {
+        document.getElementById("btnImportBook").onclick = import_book;
+    });
+
+    function import_book() {
+        const file = document.getElementById("fileImportBook").files[0];
+        if (file === undefined) { return; }
+
+        document.getElementById("resp").innerText = "";
+
+        const progress = document.getElementById("progress");
+
+        let xhrRequest = new XMLHttpRequest();
+        const endpoint = "/books";
+        xhrRequest.open("POST", endpoint);
+        xhrRequest.upload.addEventListener("progress", ({ loaded, total }) => {
+            let fileLoaded = Math.floor((loaded / total) * 100);
+            let fileTotal = Math.floor(total / 1000);
+            let fileSize;
+            fileTotal < 1024
+                ? (fileSize = fileTotal + " KB")
+                : (fileSize = (loaded / (1024 * 1024)).toFixed(2) + " MB");
+
+            progress.textContent = `${fileLoaded} / ${fileTotal} KB`;
+        });
+        xhrRequest.onload = function () {
+            document.getElementById("resp").innerText = `Done: ${xhrRequest.status} ${xhrRequest.response}`;
+        };
+        let formdata = new FormData();
+        formdata.append("epub", file);
+
+
+        xhrRequest.send(formdata);
+    }
+</script>
+
+</html>
