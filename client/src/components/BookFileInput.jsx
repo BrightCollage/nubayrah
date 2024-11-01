@@ -1,6 +1,4 @@
 
-"use client";
-
 import { useState } from "react";
 import axios from 'axios';
 import { Alert, Button, FileInput, Label } from "flowbite-react";
@@ -37,12 +35,11 @@ export function BookFileInput() {
 
 
     return (
-        <div className="mx-10 grid grid-row-2 gap-4 justify-center">
+        <div className="grid gap-2">
             <form onSubmit={handleSubmit}>
-                <Label htmlFor="file-upload" value="Upload file" />
-                <div className="grid grid-cols-3 gap-4">
-                    <div className="col-span-2"> <FileInput type="file" id="file-upload" onChange={handleChange} /></div>
-                    <div><Button type="submit">Submit</Button></div>
+                <div className="grid grid-cols-5 gap-4">
+                    <div className="col-span-4"> <FileInput type="file" id="file-upload" onChange={handleChange} /></div>
+                    <div className="grow"><Button type="submit">Submit</Button></div>
                 </div>
             </form>
             <div>{Boolean(requestResponse) &&
