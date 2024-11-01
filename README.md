@@ -12,7 +12,11 @@ The default path for database storage is `./.data/`. Please change this if neede
 
 ## go run
 
+Command to run API server:
 `go run ./cmd/api`
+
+Command to run HTML server:
+`go run ./cmd/html`
 
 # Current API
 
