@@ -58,6 +58,6 @@ func main() {
 		fs.ServeHTTP(w, r)
 	})
 	addr = fmt.Sprintf("%s:%d", viper.GetString("host"), 8090)
-	log.Printf("Serving at http://%s", addr)
+	log.Printf("Access the webserver at: http://localhost:8090")
 	http.ListenAndServe(addr, nil)
 }

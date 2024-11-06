@@ -15,8 +15,8 @@ The default path for database storage is `./.data/`. Please change this if neede
 Command to run API server:
 `go run ./cmd/api`
 
-Command to run HTML server:
-`go run ./cmd/html`
+Command to run both API and HTML server:
+`go run ./cmd/nubayrah`
 
 # Current API
 
