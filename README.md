@@ -40,10 +40,8 @@ To build the client, run:
 
 `npm --prefix client run build`
 
-Or you can `cd` into `./client` and then run:
+The destination for the build will be the `./static` directory, which will be served by the `go` httpserver.
+
+Or you can cd into the `client` directory first and then run:
 
 `npm run build`
-
-The destination for the build will be in the `./static` directory, which is where the main go package will source the html files.
-
-The `./static` directory will be served by the go httpserver.

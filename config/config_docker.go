@@ -16,10 +16,9 @@ import (
 	"github.com/spf13/viper"
 )
 
-
 func setDefaultConfig() error {
-	const dataRoot := "/data"
-	const libraryRoot := "/library"
+	const dataRoot = "/data"
+	const libraryRoot = "/library"
 
 	viper.SetDefault("library_path", libraryRoot)
 	viper.SetDefault("config_path", filepath.Join(dataRoot, "config.yaml"))
@@ -28,9 +27,9 @@ func setDefaultConfig() error {
 	viper.SetDefault("db_path", filepath.Join(libraryRoot, "nubayrah.db"))
 
 	// tells Viper to look for `dataRoot/config.yaml``
-	viper.AddConfigPath(dataRoot) 
-	viper.SetConfigName("config") 
-	viper.SetConfigType("yaml")   
+	viper.AddConfigPath(dataRoot)
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
 
 	return nil
 }
