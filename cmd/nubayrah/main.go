@@ -1,13 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"nubayrah/api/router"
 	"nubayrah/config"
-	"nubayrah/db"
+	"nubayrah/sqlite"
 	"os"
+	"os/signal"
 	"path"
 	"strings"
 
@@ -18,7 +20,41 @@ const FSPATH = "./static/"
 
 func main() {
 
-	// API SERVER
+	// Setting up a signal handler to receive kill signal.
+	ctx, cancel := context.WithCancel(context.Background())
+	c := make(chan os.Signal, 1)   // Single buffer that takes os.Signal items
+	signal.Notify(c, os.Interrupt) // os.Interrupt is CTRL + C signal, will notify the c channel
+
+	// Start a goroutine to read channel and instantiate cancel functions on os trigger.
+	go func() { <-c; cancel() }()
+
+	log.Printf("Starting Nubayrah Application")
+	// Execute program.
+	//
+	// Starts the API server
+	Server := StartServer()
+	// Starts the Client Webpage server
+	Client := StartClient()
+
+	// Line to wait for CTRL-C
+	<-ctx.Done()
+
+	// Start shutting down
+	log.Printf("Shutting down Server...")
+	if err := Server.Shutdown(ctx); err != nil {
+		panic(err) // failure/timeout shutting down the server gracefully
+	}
+	log.Printf("Shutting down Client...")
+	if err := Client.Shutdown(ctx); err != nil {
+		panic(err) // failure/timeout shutting down the server gracefully
+	}
+
+	log.Printf("main: done. exiting")
+}
+
+func StartServer() *http.Server {
+	// API Server to host endpoints.
+
 	log.Printf("Starting Nubayrah API Server")
 
 	err := config.Load()
@@ -27,22 +63,39 @@ func main() {
 	}
 
 	// Start with connecting to the Database
-	DB, err := db.OpenDatabase()
+	DB, err := sqlite.OpenDatabase()
 	if err != nil {
 		log.Printf("error when connecting to database %v", err)
 		panic(err)
 	}
 
-	// Started HTTPServer
+	// Start API Server
 	addr := fmt.Sprintf("%s:%d", viper.GetString("host"), viper.GetInt("port"))
+	srv := &http.Server{Addr: addr, Handler: router.New(DB)}
+	// http.ListenAndServe(addr, router.New(DB))
 	log.Printf("Listening at %s", addr)
-	go http.ListenAndServe(addr, router.New(DB))
+	go func() {
+		// defer wg.Done() // let main know we are done cleaning up
 
-	// HTML SERVER
+		// always returns error. ErrServerClosed on graceful close
+		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+			// unexpected error. port in use?
+			log.Fatalf("ListenAndServe(): %v", err)
+		}
+	}()
+
+	// returning reference so caller can call Shutdown()
+	return srv
+
+}
+
+func StartClient() *http.Server {
+	// Client Server to host webpage.
+
 	log.Printf("Starting Nubayrah HTML Server")
-	fs := http.FileServer(http.Dir(FSPATH))
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	router := http.NewServeMux()
+	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		// If the requested file exists then return if; otherwise return index.html (fileserver default page)
 		if r.URL.Path != "/" {
 			fullPath := FSPATH + strings.TrimPrefix(path.Clean(r.URL.Path), "/")
@@ -55,9 +108,23 @@ func main() {
 				r.URL.Path = "/"
 			}
 		}
-		fs.ServeHTTP(w, r)
+		// Serves a fileServer as HTTP
+		http.FileServer(http.Dir(FSPATH)).ServeHTTP(w, r)
 	})
-	addr = fmt.Sprintf("%s:%d", viper.GetString("host"), 8090)
+
+	addr := fmt.Sprintf("%s:%d", viper.GetString("host"), 8090)
 	log.Printf("Access the webserver at: http://localhost:8090")
-	http.ListenAndServe(addr, nil)
+	// addr := fmt.Sprintf("%s:%d", viper.GetString("host"), viper.GetInt("port"))
+	srv := &http.Server{Addr: addr, Handler: router}
+	go func() {
+		// defer wg.Done() // let main know we are done cleaning up
+
+		// always returns error. ErrServerClosed on graceful close
+		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+			// unexpected error. port in use?
+			log.Fatalf("ListenAndServe(): %v", err)
+		}
+	}()
+
+	return srv
 }

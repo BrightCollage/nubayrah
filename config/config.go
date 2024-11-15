@@ -7,7 +7,7 @@ import (
 )
 
 func Load() error {
-	err := setDefaultConfig()
+	err := DefaultConfig()
 	if err != nil {
 		log.Printf("Error when trying to get home directory: %v", err)
 		return err

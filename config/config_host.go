@@ -16,7 +16,7 @@ import (
 )
 
 // Sets default values
-func setDefaultConfig() error {
+func DefaultConfig() error {
 
 	home, err := os.UserHomeDir()
 	if err != nil {

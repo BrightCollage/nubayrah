@@ -10,8 +10,8 @@ import (
 	"net/http"
 	"nubayrah/api/book"
 	"nubayrah/api/router"
-	"nubayrah/db"
 	"nubayrah/epub"
+	"nubayrah/sqlite"
 	"os"
 	"path/filepath"
 	"testing"
@@ -70,7 +70,7 @@ func startTestServer(t *testing.T) (*gorm.DB, error) {
 		os.RemoveAll("./testHome")
 	})
 
-	DB, err := db.OpenDatabase()
+	DB, err := sqlite.OpenDatabase()
 	if err != nil {
 		return nil, err
 	}

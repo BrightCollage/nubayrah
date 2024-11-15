@@ -16,7 +16,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func setDefaultConfig() error {
+func DefaultConfig() error {
 	const dataRoot = "/data"
 	const libraryRoot = "/library"
 
