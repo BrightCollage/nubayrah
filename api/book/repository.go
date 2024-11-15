@@ -1,3 +1,5 @@
+// Contains all logic that needs to be done in order to communicate with the database.
+
 package book
 
 import (

@@ -1,4 +1,4 @@
-package db
+package sqlite
 
 import (
 	"log"
@@ -26,4 +26,17 @@ func OpenDatabase() (*gorm.DB, error) {
 	DB.AutoMigrate(&book.Book{})
 
 	return DB, err
+}
+
+type DB struct {
+	db       *gorm.DB
+	filepath string
+}
+
+func NewDB(path string) *DB {
+	db := &DB{
+		filepath: path,
+	}
+
+	return db
 }

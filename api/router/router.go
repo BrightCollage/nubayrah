@@ -41,7 +41,7 @@ func New(db *gorm.DB) chi.Router {
 		w.Write(index)
 	})
 
-	bookAPI := book.NewAPI(db)
+	BookService := book.NewBookService(db)
 
 	// Book object routes
 	r.Route("/books", func(r chi.Router) {
@@ -49,19 +49,19 @@ func New(db *gorm.DB) chi.Router {
 		r.Use(middlewares.ContentTypeJSON)
 
 		// Book -> Create()
-		r.Post("/", bookAPI.HandleImportBook)
+		r.Post("/", BookService.HandleImportBook)
 
 		// Book -> List()
-		r.Get("/", bookAPI.HandleGetAllBooks)
+		r.Get("/", BookService.HandleGetBooks)
 
 		// Book with object key
 		r.Route("/{id}", func(r chi.Router) {
 
 			//  Book -> Read()
-			r.Get("/", bookAPI.HandleGetBook)
+			r.Get("/", BookService.HandleGetBook)
 
 			// Book -> Delete()
-			r.Delete("/", bookAPI.HandleDeleteBook)
+			r.Delete("/", BookService.HandleDeleteBook)
 
 			r.Route("/cover", func(r chi.Router) {
 
@@ -69,7 +69,7 @@ func New(db *gorm.DB) chi.Router {
 				r.Use(middlewares.ContentTypePNG)
 
 				//  Book -> GetCoverImage()
-				r.Get("/", bookAPI.HandleGetBookCover)
+				r.Get("/", BookService.HandleGetBookCover)
 			})
 
 		})
