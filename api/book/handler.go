@@ -1,3 +1,6 @@
+// Handles all API related functionality including routes, request handlers, and middleware logic
+// before interfacing with the repository (database) logic.
+
 package book
 
 import (
@@ -12,18 +15,20 @@ import (
 	"gorm.io/gorm"
 )
 
-type API struct {
+// BookService represents a service for managing book objects.
+type BookService struct {
 	repository *Repository
 }
 
-func NewAPI(db *gorm.DB) *API {
-	return &API{
+func NewBookService(db *gorm.DB) *BookService {
+	// Creates a new Service
+	return &BookService{
 		repository: NewRepository(db),
 	}
 }
 
 // Handler for importing an epub
-func (a *API) HandleImportBook(w http.ResponseWriter, r *http.Request) {
+func (a *BookService) HandleImportBook(w http.ResponseWriter, r *http.Request) {
 	// Read file contents from request
 	file, _, err := r.FormFile("epub")
 	if err != nil {
@@ -62,7 +67,7 @@ func (a *API) HandleImportBook(w http.ResponseWriter, r *http.Request) {
 }
 
 // Handler for root link /books
-func (a *API) HandleGetAllBooks(w http.ResponseWriter, _ *http.Request) {
+func (a *BookService) HandleGetBooks(w http.ResponseWriter, _ *http.Request) {
 
 	books, err := a.repository.List()
 
@@ -83,7 +88,7 @@ func (a *API) HandleGetAllBooks(w http.ResponseWriter, _ *http.Request) {
 }
 
 // Handler for getting a specific book at /books/{bookID}
-func (a *API) HandleGetBook(w http.ResponseWriter, r *http.Request) {
+func (a *BookService) HandleGetBook(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	UUID, err := uuid.Parse(id)
 	if err != nil {
@@ -108,7 +113,7 @@ func (a *API) HandleGetBook(w http.ResponseWriter, r *http.Request) {
 }
 
 // Handler for getting a specific book at /books/{bookID}
-func (a *API) HandleGetBookCover(w http.ResponseWriter, r *http.Request) {
+func (a *BookService) HandleGetBookCover(w http.ResponseWriter, r *http.Request) {
 
 	// Grab UUID from url
 	id := chi.URLParam(r, "id")
@@ -162,7 +167,7 @@ func (a *API) HandleGetBookCover(w http.ResponseWriter, r *http.Request) {
 }
 
 // Handler for Deleting a specific book.
-func (a *API) HandleDeleteBook(w http.ResponseWriter, r *http.Request) {
+func (a *BookService) HandleDeleteBook(w http.ResponseWriter, r *http.Request) {
 	// Grab ID from the URL, which is /todo/{todoID}
 	id := chi.URLParam(r, "id")
 	UUID, err := uuid.Parse(id)
