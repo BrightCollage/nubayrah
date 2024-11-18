@@ -8,6 +8,11 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: mode === "docker" ? "static" : "../static",
       emptyOutDir: true, // also necessary
+    },
+    resolve: {
+      alias: {
+        components: "/src/Components"
+      }
     }
   }
 })

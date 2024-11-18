@@ -1,8 +1,8 @@
 import { Accordion } from "flowbite-react";
-import { NavBar } from "../Components/NavBar";
-import { DefaultFooter } from "../Components/DefaultFooter";
+import { NavBar } from "components/NavBar";
+import { DefaultFooter } from "components/DefaultFooter";
 
-export default function () {
+export default function Home() {
     return (
         <>
             <NavBar></NavBar>

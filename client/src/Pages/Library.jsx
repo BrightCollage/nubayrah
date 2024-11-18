@@ -1,8 +1,8 @@
 import { DarkThemeToggle, Flowbite, Button } from "flowbite-react";
-import { BookFileInput } from "../Components/BookFileInput";
-import { NavBar } from "../Components/NavBar";
-import { BookTable } from "../Components/BookTable";
-import { DefaultFooter } from "../Components/DefaultFooter";
+import { BookFileInput } from "components/BookFileInput";
+import { NavBar } from "components/NavBar";
+import { BookTable } from "components/BookTable";
+import { DefaultFooter } from "components/DefaultFooter";
 
 export default function Library() {
     return (

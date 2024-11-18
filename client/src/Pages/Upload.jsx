@@ -1,8 +1,8 @@
 import { DarkThemeToggle, Flowbite, Button } from "flowbite-react";
-import { BookFileInput } from "../Components/BookFileInput";
-import { NavBar } from "../Components/NavBar";
-import { DefaultFooter } from "../Components/DefaultFooter";
-import { UploadModal } from "../Components/UploadModal";
+import { BookFileInput } from "components/BookFileInput";
+import { NavBar } from "components/NavBar";
+import { DefaultFooter } from "components/DefaultFooter";
+import { UploadModal } from "components/UploadModal";
 
 export default function Upload() {
     return (

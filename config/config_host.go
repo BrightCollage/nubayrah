@@ -34,7 +34,7 @@ func DefaultConfig() error {
 
 	viper.SetDefault("library_path", libraryRoot)
 	viper.SetDefault("config_path", filepath.Join(homeDir, "config.yaml"))
-	viper.SetDefault("host", "0.0.0.0")
+	viper.SetDefault("host", "localhost")
 	viper.SetDefault("port", 5050)
 	viper.SetDefault("db_path", filepath.Join(libraryRoot, "nubayrah.db"))
 
