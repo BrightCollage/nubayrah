@@ -36,11 +36,11 @@ func NewRouter(db *gorm.DB) chi.Router {
 	r.Use(middleware.Logger)
 
 	// Router path for base endpoint. Serves built react project.
+	// Used to re-route all non-defined API endpoints back to index.html react project.
 	r.Get("/*", HandleServeClient)
 
-	BookService := book.NewBookService(db)
-
 	// Book object routes
+	BookService := book.NewBookService(db)
 	r.Route("/books", BookService.RegisterRoutes)
 
 	return r
