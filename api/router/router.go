@@ -3,8 +3,9 @@ package router
 import (
 	"net/http"
 	"nubayrah/api/book"
-	middlewares "nubayrah/api/router/middleware"
 	"os"
+	"path"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -12,7 +13,9 @@ import (
 	"gorm.io/gorm"
 )
 
-func New(db *gorm.DB) chi.Router {
+const FSPATH = "./static/"
+
+func NewRouter(db *gorm.DB) chi.Router {
 
 	// Create multiplexer/router for the server
 	r := chi.NewRouter()
@@ -32,50 +35,29 @@ func New(db *gorm.DB) chi.Router {
 	// Use Logger for REST API request logging.
 	r.Use(middleware.Logger)
 
-	r.Get("/", func(w http.ResponseWriter, _ *http.Request) {
-		index, err := os.ReadFile("../../static/index.html")
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.Write(index)
-	})
+	// Router path for base endpoint. Serves built react project.
+	r.Get("/*", HandleServeClient)
 
 	BookService := book.NewBookService(db)
 
 	// Book object routes
-	r.Route("/books", func(r chi.Router) {
-
-		r.Use(middlewares.ContentTypeJSON)
-
-		// Book -> Create()
-		r.Post("/", BookService.HandleImportBook)
-
-		// Book -> List()
-		r.Get("/", BookService.HandleGetBooks)
-
-		// Book with object key
-		r.Route("/{id}", func(r chi.Router) {
-
-			//  Book -> Read()
-			r.Get("/", BookService.HandleGetBook)
-
-			// Book -> Delete()
-			r.Delete("/", BookService.HandleDeleteBook)
-
-			r.Route("/cover", func(r chi.Router) {
-
-				// GetCoverImage() returns type PNG
-				r.Use(middlewares.ContentTypePNG)
-
-				//  Book -> GetCoverImage()
-				r.Get("/", BookService.HandleGetBookCover)
-			})
-
-		})
-
-	})
+	r.Route("/books", BookService.RegisterRoutes)
 
 	return r
 
+}
+
+func HandleServeClient(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		fullPath := FSPATH + strings.TrimPrefix(path.Clean(r.URL.Path), "/")
+		_, err := os.Stat(fullPath)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				panic(err)
+			}
+			// Requested file does not exist so we return the default (resolves to index.html)
+			r.URL.Path = "/"
+		}
+	}
+	http.FileServer(http.Dir(FSPATH)).ServeHTTP(w, r)
 }

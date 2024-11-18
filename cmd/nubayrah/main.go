@@ -10,10 +10,9 @@ import (
 	"nubayrah/sqlite"
 	"os"
 	"os/signal"
-	"path"
-	"strings"
 
 	"github.com/spf13/viper"
+	"gorm.io/gorm"
 )
 
 const FSPATH = "./static/"
@@ -28,103 +27,67 @@ func main() {
 	// Start a goroutine to read channel and instantiate cancel functions on os trigger.
 	go func() { <-c; cancel() }()
 
-	log.Printf("Starting Nubayrah Application")
 	// Execute program.
+	log.Printf("Starting Nubayrah Application")
+	//
+	// Creates a new Main object
+	m := NewMain()
 	//
 	// Starts the API server
-	Server := StartServer()
-	// Starts the Client Webpage server
-	Client := StartClient()
-
+	m.StartServer()
+	//
 	// Line to wait for CTRL-C
 	<-ctx.Done()
 
 	// Start shutting down
 	log.Printf("Shutting down Server...")
-	if err := Server.Shutdown(ctx); err != nil {
-		panic(err) // failure/timeout shutting down the server gracefully
-	}
-	log.Printf("Shutting down Client...")
-	if err := Client.Shutdown(ctx); err != nil {
+	if err := m.server.Shutdown(ctx); err != nil {
 		panic(err) // failure/timeout shutting down the server gracefully
 	}
 
 	log.Printf("main: done. exiting")
 }
 
-func StartServer() *http.Server {
-	// API Server to host endpoints.
+type Main struct {
+	// Object to maintain main functions
+	server *http.Server
+	db     *gorm.DB
+}
 
-	log.Printf("Starting Nubayrah API Server")
+func NewMain() *Main {
 
+	// Load configurations first.
 	err := config.Load()
 	if err != nil {
 		panic(err)
 	}
 
-	// Start with connecting to the Database
-	DB, err := sqlite.OpenDatabase()
-	if err != nil {
-		log.Printf("error when connecting to database %v", err)
-		panic(err)
-	}
-
-	// Start API Server
+	// Get address of server to attach
 	addr := fmt.Sprintf("%s:%d", viper.GetString("host"), viper.GetInt("port"))
-	srv := &http.Server{Addr: addr, Handler: router.New(DB)}
-	// http.ListenAndServe(addr, router.New(DB))
-	log.Printf("Listening at %s", addr)
-	go func() {
-		// defer wg.Done() // let main know we are done cleaning up
-
-		// always returns error. ErrServerClosed on graceful close
-		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-			// unexpected error. port in use?
-			log.Fatalf("ListenAndServe(): %v", err)
-		}
-	}()
-
-	// returning reference so caller can call Shutdown()
-	return srv
-
+	return &Main{
+		server: &http.Server{
+			Addr: addr,
+		},
+		db: sqlite.NewDB(),
+	}
 }
 
-func StartClient() *http.Server {
-	// Client Server to host webpage.
+func (m *Main) StartServer() {
 
-	log.Printf("Starting Nubayrah HTML Server")
+	// API Server to host endpoints.
+	log.Printf("Starting Nubayrah API Server")
 
-	router := http.NewServeMux()
-	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// If the requested file exists then return if; otherwise return index.html (fileserver default page)
-		if r.URL.Path != "/" {
-			fullPath := FSPATH + strings.TrimPrefix(path.Clean(r.URL.Path), "/")
-			_, err := os.Stat(fullPath)
-			if err != nil {
-				if !os.IsNotExist(err) {
-					panic(err)
-				}
-				// Requested file does not exist so we return the default (resolves to index.html)
-				r.URL.Path = "/"
-			}
-		}
-		// Serves a fileServer as HTTP
-		http.FileServer(http.Dir(FSPATH)).ServeHTTP(w, r)
-	})
-
-	addr := fmt.Sprintf("%s:%d", viper.GetString("host"), 8090)
-	log.Printf("Access the webserver at: http://localhost:8090")
-	// addr := fmt.Sprintf("%s:%d", viper.GetString("host"), viper.GetInt("port"))
-	srv := &http.Server{Addr: addr, Handler: router}
+	// Attach the router to the http.Server
+	m.server.Handler = router.NewRouter(m.db)
+	// Start with connecting to the Database
 	go func() {
-		// defer wg.Done() // let main know we are done cleaning up
 
+		log.Printf("Listening at: http://%v", m.server.Addr)
 		// always returns error. ErrServerClosed on graceful close
-		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+		if err := m.server.ListenAndServe(); err != http.ErrServerClosed {
 			// unexpected error. port in use?
 			log.Fatalf("ListenAndServe(): %v", err)
 		}
 	}()
 
-	return srv
 }

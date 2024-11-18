@@ -69,15 +69,10 @@ func startTestServer(t *testing.T) (*gorm.DB, error) {
 		}
 		os.RemoveAll("./testHome")
 	})
-
-	DB, err := sqlite.OpenDatabase()
-	if err != nil {
-		return nil, err
-	}
-
+	DB = sqlite.NewDB()
 	addr := fmt.Sprintf("%s:%d", viper.GetString("host"), viper.GetInt("port"))
 
-	srv = &http.Server{Addr: addr, Handler: router.New(DB)}
+	srv = &http.Server{Addr: addr, Handler: router.NewRouter(DB)}
 	go func() {
 		srv.ListenAndServe()
 	}()

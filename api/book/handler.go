@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"nubayrah/api/router/middleware"
 	"nubayrah/epub"
 
 	"github.com/go-chi/chi/v5"
@@ -25,6 +26,37 @@ func NewBookService(db *gorm.DB) *BookService {
 	return &BookService{
 		repository: NewRepository(db),
 	}
+}
+func (s *BookService) RegisterRoutes(r chi.Router) {
+
+	r.Use(middleware.ContentTypeJSON)
+
+	// Book -> Create()
+	r.Post("/", s.HandleImportBook)
+
+	// Book -> List()
+	r.Get("/", s.HandleGetBooks)
+
+	// Book with object key
+	r.Route("/{id}", func(r chi.Router) {
+
+		//  Book -> Read()
+		r.Get("/", s.HandleGetBook)
+
+		// Book -> Delete()
+		r.Delete("/", s.HandleDeleteBook)
+
+		r.Route("/cover", func(r chi.Router) {
+
+			// GetCoverImage() returns type PNG
+			r.Use(middleware.ContentTypePNG)
+
+			//  Book -> GetCoverImage()
+			r.Get("/", s.HandleGetBookCover)
+		})
+
+	})
+
 }
 
 // Handler for importing an epub

@@ -11,32 +11,29 @@ import (
 	"gorm.io/gorm"
 )
 
-func OpenDatabase() (*gorm.DB, error) {
+func OpenDatabase(path string) (*gorm.DB, error) {
 
-	// Use stdlib to open a connection to postgres db.
-	db_path := filepath.Join(config.GetString("db_path"))
-	log.Printf("Using databse from: %v", db_path)
-	DB, err := gorm.Open(sqlite.Open(db_path), &gorm.Config{})
+	// Open DB command
+	DB, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
 
-	// Go requires DB to be used or else it complains.
 	if err != nil {
 		return DB, err
 	}
 
+	// Run Automigration
 	DB.AutoMigrate(&book.Book{})
 
 	return DB, err
 }
 
-type DB struct {
-	db       *gorm.DB
-	filepath string
-}
-
-func NewDB(path string) *DB {
-	db := &DB{
-		filepath: path,
+func NewDB() *gorm.DB {
+	// Use stdlib to open a connection to postgres db.
+	db_path := filepath.Join(config.GetString("db_path"))
+	log.Printf("Using databse from: %v", db_path)
+	DB, err := OpenDatabase(db_path)
+	if err != nil {
+		log.Printf("error when connecting to database %v", err)
+		panic(err)
 	}
-
-	return db
+	return DB
 }
